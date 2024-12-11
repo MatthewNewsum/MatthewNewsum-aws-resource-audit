@@ -17,6 +17,7 @@ __all__ = [
     'EC2Service',
     'IAMService',
     'LambdaService',
+    'QuickSightService',
     'RDSService',
     'S3Service',
     'VPCService'

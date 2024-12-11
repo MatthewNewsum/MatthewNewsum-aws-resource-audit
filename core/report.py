@@ -84,6 +84,7 @@ class ReportGenerator:
     def _write_regional_resources(self, writer: pd.ExcelWriter, header_format: Any):
         regional_data = {
             'EC2 Instances': [],
+            'Quicksight Resources': [],
             'RDS Instances': [],
             'VPCs': [],
             'Subnets': [],
@@ -101,6 +102,8 @@ class ReportGenerator:
                 if isinstance(data, list):
                     if service == 'ec2':
                         regional_data['EC2 Instances'].extend(data)
+                    elif service == 'quicksight':
+                        regional_data['QuickSight Resources'].extend(data)
                     elif service == 'rds':
                         regional_data['RDS Instances'].extend(data)
                     elif service == 'vpc':
@@ -153,6 +156,7 @@ class ReportGenerator:
         resource_counts = [
             {'Category': 'Regions Found', 'Count': len(self.results.get('regions', {}))},
             {'Category': 'EC2 Instances', 'Count': sum(len(r.get('ec2', [])) for r in self.results['regions'].values())},
+            {'Category': 'QuickSight Resources', 'Count': sum(len(r.get('quicksight', [])) for r in self.results['regions'].values())},
             {'Category': 'RDS Instances', 'Count': sum(len(r.get('rds', [])) for r in self.results['regions'].values())},
             {'Category': 'VPC Resources', 'Count': sum(len(r.get('vpc', [])) for r in self.results['regions'].values())},
             {'Category': 'Lambda Functions', 'Count': sum(len(r.get('lambda', [])) for r in self.results['regions'].values())},

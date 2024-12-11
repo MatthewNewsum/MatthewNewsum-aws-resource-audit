@@ -5,6 +5,7 @@ AVAILABLE_SERVICES = [
     'ec2',
     'iam',
     'lambda',
+    'quicksight',
     'rds',
     's3',
     'vpc'

@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
 from services.base import AWSService
 from services.ec2 import EC2Service
+from services.quicksight import QuickSightService
 from services.rds import RDSService
 from services.vpc import VPCService
 from services.lambda_service import LambdaService
@@ -91,6 +92,11 @@ class AWSAuditor:
                 self.print_progress("  Checking EC2 instances...")
                 ec2_service = EC2Service(self.session, region)
                 regional_results['ec2'] = ec2_service.audit()
+                
+            if 'quicksight' in self.services:
+                self.print_progress("  Checking QuickSight resources...")
+                quicksight_service = QuickSightService(self.session, region)
+                regional_results['quicksight'] = quicksight_service.audit()
 
             if 'rds' in self.services:
                 self.print_progress("  Checking RDS instances...")
