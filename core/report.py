@@ -94,10 +94,12 @@ class ReportGenerator:
             'Security Groups': [],
             'Security Group Rules': [],
             'Lambda Functions': [],
+            'Lightsail Instances': [],
+            'Lightsail Databases': [],
             'DynamoDB Tables': [],
             'Bedrock Models': []
         }
-
+    
         for region_data in self.results.get('regions', {}).values():
             for service, data in region_data.items():
                 if isinstance(data, list):
@@ -123,11 +125,17 @@ class ReportGenerator:
                                 regional_data['Security Group Rules'].extend(vpc['security_group_rules'])
                     elif service == 'lambda':
                         regional_data['Lambda Functions'].extend(data)
+                    elif service == 'lightsail':
+                        for resource in data:
+                            if resource.get('Resource Type') == 'Instance':
+                                regional_data['Lightsail Instances'].append(resource)
+                            elif resource.get('Resource Type') == 'Database':
+                                regional_data['Lightsail Databases'].append(resource)
                     elif service == 'dynamodb':
                         regional_data['DynamoDB Tables'].extend(data)
                     elif service == 'bedrock':
                         regional_data['Bedrock Models'].extend(data)
-
+    
         for sheet_name, data in regional_data.items():
             if data:
                 self._write_dataframe(writer, sheet_name, data, header_format)
@@ -158,6 +166,8 @@ class ReportGenerator:
             {'Category': 'RDS Instances', 'Count': sum(len(r.get('rds', [])) for r in self.results['regions'].values())},
             {'Category': 'VPC Resources', 'Count': sum(len(r.get('vpc', [])) for r in self.results['regions'].values())},
             {'Category': 'Lambda Functions', 'Count': sum(len(r.get('lambda', [])) for r in self.results['regions'].values())},
+            {'Category': 'Lightsail Instances', 'Count': sum(len(r.get('lightsail', [])) for r in self.results['regions'].values() if any(res['Resource Type'] == 'Instance' for res in r.get('lightsail', [])))},
+            {'Category': 'Lightsail Databases', 'Count': sum(len(r.get('lightsail', [])) for r in self.results['regions'].values() if any(res['Resource Type'] == 'Database' for res in r.get('lightsail', [])))},
             {'Category': 'DynamoDB Tables', 'Count': sum(len(r.get('dynamodb', [])) for r in self.results['regions'].values())},
             {'Category': 'Bedrock Models', 'Count': sum(len(r.get('bedrock', [])) for r in self.results['regions'].values())},
             {'Category': 'IAM Users', 'Count': len(self.results.get('global_services', {}).get('iam', {}).get('users', []))},

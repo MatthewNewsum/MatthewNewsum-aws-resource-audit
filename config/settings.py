@@ -6,6 +6,7 @@ AVAILABLE_SERVICES = [
     'ec2',
     'iam',
     'lambda',
+    'lightsail',
     'rds',
     's3',
     'vpc'

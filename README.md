@@ -87,6 +87,7 @@ The tool generates two report files:
 - RDS Instances
 - VPC Resources
 - Lambda Functions
+- Lightsail
 - DynamoDB Tables
 - Bedrock Models
 - Resource Usage by Region
