@@ -6,6 +6,7 @@
 - EC2
 - IAM
 - Lambda
+- Lightsail
 - RDS
 - S3
 - VPC
@@ -13,7 +14,6 @@
 ###  Services to Add   ###
 
 - ElasticSearch
-- Lightsail (Clusters Done)
 - Beanstalk
 - Batch
 - Elastic Beanstalk
