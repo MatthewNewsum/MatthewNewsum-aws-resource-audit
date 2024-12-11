@@ -1,3 +1,15 @@
+###  Services Added   ###
+
+- Amplify
+- Bedrock
+- DynamoDB
+- EC2
+- IAM
+- Lambda
+- RDS
+- S3
+- VPC
+
 ###  Services to Add   ###
 
 - ElasticSearch
@@ -19,7 +31,7 @@
 
 ###   Things to fix   ####
 
--resource usage by region is not updating as new services are added. Tab is called --> Resource Usage by Region
+- (DONE) resource usage by region is not updating as new services are added. Tab is called --> Resource Usage by Region
 
 
 ###   Branches in progress   ###
