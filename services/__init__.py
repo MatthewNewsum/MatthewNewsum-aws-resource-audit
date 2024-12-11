@@ -4,6 +4,7 @@ from .dynamodb import DynamoDBService
 from .ec2 import EC2Service
 from .iam import IAMService
 from .lambda_service import LambdaService
+from .lightsail import LightsailService
 from .rds import RDSService
 from .s3 import S3Service
 from .vpc import VPCService
@@ -16,6 +17,7 @@ __all__ = [
     'EC2Service',
     'IAMService',
     'LambdaService',
+    'LightsailService',
     'RDSService',
     'S3Service',
     'VPCService'

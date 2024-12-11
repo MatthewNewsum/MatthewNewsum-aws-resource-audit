@@ -8,6 +8,7 @@ from services.ec2 import EC2Service
 from services.rds import RDSService
 from services.vpc import VPCService
 from services.lambda_service import LambdaService
+from services.lightsail import LightsailService
 from services.dynamodb import DynamoDBService
 from services.bedrock import BedrockService
 from services.iam import IAMService
@@ -112,6 +113,11 @@ class AWSAuditor:
                 self.print_progress("  Checking Lambda functions...")
                 lambda_service = LambdaService(self.session, region)
                 regional_results['lambda'] = lambda_service.audit()
+                
+            if 'lightsail' in self.services:
+                self.print_progress("  Checking Lightsail resources...")
+                lightsail_service = LightsailService(self.session, region)
+                regional_results['lightsail'] = lightsail_service.audit()
 
             if 'dynamodb' in self.services:
                 self.print_progress("  Checking DynamoDB tables...")
