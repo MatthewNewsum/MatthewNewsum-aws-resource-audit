@@ -1,5 +1,6 @@
 # AWS Service configuration
 AVAILABLE_SERVICES = [
+    'amplify',
     'bedrock',
     'dynamodb',
     'ec2',
