@@ -4,7 +4,7 @@ A Python tool for auditing AWS resources across multiple regions and services.
 
 ## Companion terraform to create some resources to test this audit app
 
--Refer to <GITHUB LINK> for terraform code to create some resources to test this audit app.
+-Refer to (https://github.com/MatthewNewsum/aws_service_setup_scripts.git) for terraform code to create some resources to test this audit app.
 
 ## Installation
 
