@@ -41,4 +41,8 @@
 
 ###   Instructions   ###
 
-I need to add XXX as an audited service to the app. Provide clear, concise, step by step instructions to modify the existing app taking care to omit NOTHING and NOT to change or remove any existing functionality.
+@workspace I need to add XXX as an audited service to the app. Provide clear, concise, step by step instructions to modify the existing app taking care to omit NOTHING and NOT to change or remove any existing functionality. Be sure to add the additional fields to the summary excel tabs where applicable. Namely Resource Usage by Region, Resource Counts, Region Summary and Region Details.
+
+
+
+@workspace provide clear, concise, step by step instructions with references please to resolve this error.
