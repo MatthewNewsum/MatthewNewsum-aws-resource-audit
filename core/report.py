@@ -1,4 +1,5 @@
 import pandas as pd
+from config.settings import AVAILABLE_SERVICES
 from typing import Dict, Any, List
 from datetime import datetime
 import json
@@ -133,13 +134,10 @@ class ReportGenerator:
 
     def _write_resource_usage_by_region(self, writer: pd.ExcelWriter, header_format: Any):
         usage_data = []
+        # Get services from config
         services = {
-            'EC2': 'ec2',
-            'RDS': 'rds', 
-            'VPC': 'vpc',
-            'Lambda': 'lambda',
-            'DynamoDB': 'dynamodb',
-            'Bedrock': 'bedrock'
+            service.upper(): service.lower() 
+            for service in AVAILABLE_SERVICES
         }
         
         for region in self.results.get('regions', {}):
