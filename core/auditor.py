@@ -3,6 +3,7 @@ import boto3
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
 from services.base import AWSService
+from services.amplify import AmplifyService
 from services.ec2 import EC2Service
 from services.rds import RDSService
 from services.vpc import VPCService
@@ -87,6 +88,11 @@ class AWSAuditor:
         regional_results = {}
         
         try:
+            if 'amplify' in self.services:
+                self.print_progress("  Checking Amplify apps...")
+                amplify_service = AmplifyService(self.session, region)
+                regional_results['amplify'] = amplify_service.audit()
+            
             if 'ec2' in self.services:
                 self.print_progress("  Checking EC2 instances...")
                 ec2_service = EC2Service(self.session, region)

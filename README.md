@@ -2,6 +2,10 @@
 
 A Python tool for auditing AWS resources across multiple regions and services.
 
+## Companion terraform to create some resources to test this audit app
+
+-Refer to (https://github.com/MatthewNewsum/aws_service_setup_scripts.git) for terraform code to create some resources to test this audit app.
+
 ## Installation
 
 1. Clone the repository
@@ -35,6 +39,7 @@ python main.py [--regions REGIONS] [--services SERVICES] [--output-dir OUTPUT_DI
 
 ### Available Services
 
+- amplify
 - bedrock
 - dynamodb
 - ec2

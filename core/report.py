@@ -83,6 +83,7 @@ class ReportGenerator:
 
     def _write_regional_resources(self, writer: pd.ExcelWriter, header_format: Any):
         regional_data = {
+            'Amplify Apps': [],
             'EC2 Instances': [],
             'RDS Instances': [],
             'VPCs': [],
@@ -99,7 +100,9 @@ class ReportGenerator:
         for region_data in self.results.get('regions', {}).values():
             for service, data in region_data.items():
                 if isinstance(data, list):
-                    if service == 'ec2':
+                    if service == 'amplify':
+                        regional_data['Amplify Apps'].extend(data)
+                    elif service == 'ec2':
                         regional_data['EC2 Instances'].extend(data)
                     elif service == 'rds':
                         regional_data['RDS Instances'].extend(data)
@@ -152,6 +155,7 @@ class ReportGenerator:
         # Resource Counts
         resource_counts = [
             {'Category': 'Regions Found', 'Count': len(self.results.get('regions', {}))},
+            {'Category': 'Amplify Apps', 'Count': sum(len(r.get('amplify', [])) for r in self.results['regions'].values())},
             {'Category': 'EC2 Instances', 'Count': sum(len(r.get('ec2', [])) for r in self.results['regions'].values())},
             {'Category': 'RDS Instances', 'Count': sum(len(r.get('rds', [])) for r in self.results['regions'].values())},
             {'Category': 'VPC Resources', 'Count': sum(len(r.get('vpc', [])) for r in self.results['regions'].values())},
