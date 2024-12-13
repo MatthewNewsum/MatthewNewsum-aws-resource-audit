@@ -8,6 +8,7 @@
 - Lambda
 - Lightsail
 - RDS
+- Redshift
 - S3
 - VPC
 

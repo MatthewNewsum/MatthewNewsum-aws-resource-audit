@@ -8,6 +8,7 @@ AVAILABLE_SERVICES = [
     'lambda',
     'lightsail',
     'rds',
+    'redshift'
     's3',
     'vpc'
 ]

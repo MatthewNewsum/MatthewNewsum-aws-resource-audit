@@ -6,6 +6,7 @@ from services.base import AWSService
 from services.amplify import AmplifyService
 from services.ec2 import EC2Service
 from services.rds import RDSService
+from services.redshift import RedshiftService
 from services.vpc import VPCService
 from services.lambda_service import LambdaService
 from services.lightsail import LightsailService
@@ -103,6 +104,11 @@ class AWSAuditor:
                 self.print_progress("  Checking RDS instances...")
                 rds_service = RDSService(self.session, region)
                 regional_results['rds'] = rds_service.audit()
+                
+            if 'redshift' in self.services:
+                self.print_progress("  Checking Redshift clusters...")
+                redshift_service = RedshiftService(self.session, region)
+                regional_results['redshift'] = redshift_service.audit()
 
             if 'vpc' in self.services:
                 self.print_progress("  Checking VPC resources...")

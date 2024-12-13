@@ -87,6 +87,7 @@ class ReportGenerator:
             'Amplify Apps': [],
             'EC2 Instances': [],
             'RDS Instances': [],
+            'Redshift Clusters': [],
             'VPCs': [],
             'Subnets': [],
             'Internet Gateways': [],
@@ -109,6 +110,8 @@ class ReportGenerator:
                         regional_data['EC2 Instances'].extend(data)
                     elif service == 'rds':
                         regional_data['RDS Instances'].extend(data)
+                    elif service == 'redshift':
+                        regional_data['Redshift Clusters'].extend(data)
                     elif service == 'vpc':
                         for vpc in data:
                             regional_data['VPCs'].append({k: v for k, v in vpc.items() 
@@ -164,6 +167,7 @@ class ReportGenerator:
             {'Category': 'Amplify Apps', 'Count': sum(len(r.get('amplify', [])) for r in self.results['regions'].values())},
             {'Category': 'EC2 Instances', 'Count': sum(len(r.get('ec2', [])) for r in self.results['regions'].values())},
             {'Category': 'RDS Instances', 'Count': sum(len(r.get('rds', [])) for r in self.results['regions'].values())},
+            {'Category': 'Redshift Clusters', 'Count': sum(len(r.get('redshift', [])) for r in self.results['regions'].values())},
             {'Category': 'VPC Resources', 'Count': sum(len(r.get('vpc', [])) for r in self.results['regions'].values())},
             {'Category': 'Lambda Functions', 'Count': sum(len(r.get('lambda', [])) for r in self.results['regions'].values())},
             {'Category': 'Lightsail Instances', 'Count': sum(len(r.get('lightsail', [])) for r in self.results['regions'].values() if any(res['Resource Type'] == 'Instance' for res in r.get('lightsail', [])))},
@@ -195,6 +199,7 @@ class ReportGenerator:
                 'Region': region,
                 'EC2 Instances': len(data.get('ec2', [])),
                 'RDS Instances': len(data.get('rds', [])),
+                'Redshift Clusters': len(data.get('redshift', [])),
                 'VPCs': len(data.get('vpc', [])),
                 'Lambda Functions': len(data.get('lambda', [])),
                 'DynamoDB Tables': len(data.get('dynamodb', [])),

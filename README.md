@@ -46,6 +46,7 @@ python main.py [--regions REGIONS] [--services SERVICES] [--output-dir OUTPUT_DI
 - iam
 - lambda
 - rds
+- redshift
 - s3
 - vpc
 

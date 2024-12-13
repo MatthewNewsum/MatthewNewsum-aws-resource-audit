@@ -6,6 +6,7 @@ from .iam import IAMService
 from .lambda_service import LambdaService
 from .lightsail import LightsailService
 from .rds import RDSService
+from .redshift import RedshiftService
 from .s3 import S3Service
 from .vpc import VPCService
 
@@ -19,6 +20,7 @@ __all__ = [
     'LambdaService',
     'LightsailService',
     'RDSService',
+    'RedshiftService',
     'S3Service',
     'VPCService'
 ]
