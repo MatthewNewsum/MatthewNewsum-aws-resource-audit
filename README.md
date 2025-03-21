@@ -26,6 +26,10 @@ A Python tool for auditing AWS resources across multiple regions and services.
   - pandas
   - xlsxwriter
 
+### Known Issues
+
+- The VPC output leaves a lot to be desired - I will try to reformat to be more readable
+
 ## Usage
 
 Run the script with optional parameters:
@@ -118,3 +122,4 @@ Errors are logged and included in the final reports.
 The tool uses concurrent execution for improved performance:
 - Default maximum worker threads: 10
 - Configurable via source code (DEFAULT_MAX_WORKERS)
+
