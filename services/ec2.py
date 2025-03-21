@@ -1,7 +1,12 @@
 from typing import Dict, List, Any
 from .base import AWSService
+import boto3
 
 class EC2Service(AWSService):
+    def __init__(self, session: boto3.Session, region: str = None):
+        super().__init__(session, region)
+        self.client = self.get_client('ec2')
+
     @property
     def service_name(self) -> str:
         return 'ec2'

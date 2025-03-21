@@ -2,6 +2,10 @@ from typing import Dict, List, Any
 from .base import AWSService
 
 class AmplifyService(AWSService):
+    def __init__(self, session, region=None):
+        super().__init__(session, region)
+        self.client = session.client('amplify', region_name=region)
+
     @property
     def service_name(self) -> str:
         return 'amplify'

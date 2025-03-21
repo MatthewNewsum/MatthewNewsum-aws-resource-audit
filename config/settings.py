@@ -1,6 +1,7 @@
 # AWS Service configuration
 AVAILABLE_SERVICES = [
     'amplify',
+    'athena',
     'bedrock',
     'dynamodb',
     'ec2',
@@ -9,7 +10,8 @@ AVAILABLE_SERVICES = [
     'lightsail',
     'rds',
     's3',
-    'vpc'
+    'vpc',
+    'glue'
 ]
 
 # Threading configuration

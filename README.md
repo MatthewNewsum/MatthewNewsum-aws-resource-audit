@@ -1,4 +1,7 @@
 # AWS Resource Auditor
+# Created by Matt Newsum 
+# https://www.linkedin.com/in/mattnewsum/
+# http://www.newsum.me
 
 A Python tool for auditing AWS resources across multiple regions and services.
 
@@ -36,13 +39,16 @@ python main.py [--regions REGIONS] [--services SERVICES] [--output-dir OUTPUT_DI
 - `--regions`: Comma-separated list of AWS regions or "all" (default: "all")
 - `--services`: Comma-separated list of services to audit or "all" (default: "all")
 - `--output-dir`: Directory for output files (default: "results")
+- `--profile`: AWS profile name to use (default: "default")
 
 ### Available Services
 
 - amplify
+- athena
 - bedrock
 - dynamodb
 - ec2
+- glue
 - iam
 - lambda
 - rds
@@ -65,7 +71,9 @@ Custom output directory:
 ```bash
 python main.py --output-dir my-audit-results
 ```
-
+Using a specific AWS profile:
+```bash
+python main.py --profile matt
 ## Output
 
 The tool generates two report files:

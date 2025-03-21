@@ -1,8 +1,10 @@
+from collections import defaultdict
+from typing import Any, Dict, List
 import pandas as pd
-from config.settings import AVAILABLE_SERVICES
-from typing import Dict, Any, List
-from datetime import datetime
 import json
+from datetime import datetime
+from pathlib import Path
+from config.settings import AVAILABLE_SERVICES
 import os
 import xlsxwriter
 
@@ -82,63 +84,56 @@ class ReportGenerator:
                                     self.results['global_services']['s3'],
                                     header_format)
 
-    def _write_regional_resources(self, writer: pd.ExcelWriter, header_format: Any):
-        regional_data = {
-            'Amplify Apps': [],
-            'EC2 Instances': [],
-            'RDS Instances': [],
-            'VPCs': [],
-            'Subnets': [],
-            'Internet Gateways': [],
-            'Routes': [],
-            'Security Groups': [],
-            'Security Group Rules': [],
-            'Lambda Functions': [],
-            'Lightsail Instances': [],
-            'Lightsail Databases': [],
-            'DynamoDB Tables': [],
-            'Bedrock Models': []
-        }
-    
-        for region_data in self.results.get('regions', {}).values():
-            for service, data in region_data.items():
-                if isinstance(data, list):
-                    if service == 'amplify':
-                        regional_data['Amplify Apps'].extend(data)
-                    elif service == 'ec2':
-                        regional_data['EC2 Instances'].extend(data)
-                    elif service == 'rds':
-                        regional_data['RDS Instances'].extend(data)
-                    elif service == 'vpc':
-                        for vpc in data:
-                            regional_data['VPCs'].append({k: v for k, v in vpc.items() 
-                                                        if not isinstance(v, (list, dict))})
-                            if 'subnets' in vpc:
-                                regional_data['Subnets'].extend(vpc['subnets'])
-                            if 'internet_gateways' in vpc:
-                                regional_data['Internet Gateways'].extend(vpc['internet_gateways'])
-                            if 'route_tables' in vpc:
-                                regional_data['Routes'].extend(vpc['route_tables'])
-                            if 'security_groups' in vpc:
-                                regional_data['Security Groups'].extend(vpc['security_groups'])
-                            if 'security_group_rules' in vpc:
-                                regional_data['Security Group Rules'].extend(vpc['security_group_rules'])
-                    elif service == 'lambda':
-                        regional_data['Lambda Functions'].extend(data)
-                    elif service == 'lightsail':
-                        for resource in data:
-                            if resource.get('Resource Type') == 'Instance':
-                                regional_data['Lightsail Instances'].append(resource)
-                            elif resource.get('Resource Type') == 'Database':
-                                regional_data['Lightsail Databases'].append(resource)
-                    elif service == 'dynamodb':
-                        regional_data['DynamoDB Tables'].extend(data)
-                    elif service == 'bedrock':
-                        regional_data['Bedrock Models'].extend(data)
-    
-        for sheet_name, data in regional_data.items():
-            if data:
-                self._write_dataframe(writer, sheet_name, data, header_format)
+    def _write_regional_resources(self, writer: pd.ExcelWriter, header_format):
+        regional_data = defaultdict(list)
+        
+        for region, data in self.results['regions'].items():
+            for service, resources in data.items():
+                if not resources:
+                    continue
+                    
+                if service == 'glue':
+                    # Handle glue service which has nested structure
+                    if 'databases' in resources:
+                        for db in resources['databases']:
+                            db['Region'] = region
+                            regional_data['Glue Databases'].append(db)
+                    if 'jobs' in resources:
+                        for job in resources['jobs']:
+                            job['Region'] = region
+                            regional_data['Glue Jobs'].append(job)
+                    if 'crawlers' in resources:
+                        for crawler in resources['crawlers']:
+                            crawler['Region'] = region
+                            regional_data['Glue Crawlers'].append(crawler)
+                elif service == 'athena':
+                    # Handle athena service which has nested structure
+                    if 'workgroups' in resources:
+                        for wg in resources['workgroups']:
+                            wg['Region'] = region
+                            regional_data['Athena Workgroups'].append(wg)
+                    if 'named_queries' in resources:
+                        for query in resources['named_queries']:
+                            query['Region'] = region
+                            regional_data['Athena Named Queries'].append(query)
+                    if 'data_catalogs' in resources:
+                        for catalog in resources['data_catalogs']:
+                            catalog['Region'] = region
+                            regional_data['Athena Data Catalogs'].append(catalog)
+                else:
+                    # Handle other services as before
+                    for resource in resources:
+                        if isinstance(resource, dict):
+                            resource['Region'] = region
+                            regional_data[f'{service.upper()} {self._get_resource_type(service)}'].append(resource)
+
+        # Write each resource type to its own worksheet
+        for resource_type, resources in regional_data.items():
+            if resources:
+                df = pd.DataFrame(resources)
+                df.to_excel(writer, sheet_name=resource_type, index=False)
+                self._format_worksheet(writer, resource_type, df, header_format)
+                print(f"  Added {len(resources)} {resource_type}")
 
     def _write_resource_usage_by_region(self, writer: pd.ExcelWriter, header_format: Any):
         usage_data = []
@@ -158,24 +153,7 @@ class ReportGenerator:
         self._write_dataframe(writer, 'Resource Usage by Region', usage_data, header_format)
 
     def _write_summary(self, writer: pd.ExcelWriter, header_format: Any):
-        # Resource Counts
-        resource_counts = [
-            {'Category': 'Regions Found', 'Count': len(self.results.get('regions', {}))},
-            {'Category': 'Amplify Apps', 'Count': sum(len(r.get('amplify', [])) for r in self.results['regions'].values())},
-            {'Category': 'EC2 Instances', 'Count': sum(len(r.get('ec2', [])) for r in self.results['regions'].values())},
-            {'Category': 'RDS Instances', 'Count': sum(len(r.get('rds', [])) for r in self.results['regions'].values())},
-            {'Category': 'VPC Resources', 'Count': sum(len(r.get('vpc', [])) for r in self.results['regions'].values())},
-            {'Category': 'Lambda Functions', 'Count': sum(len(r.get('lambda', [])) for r in self.results['regions'].values())},
-            {'Category': 'Lightsail Instances', 'Count': sum(len(r.get('lightsail', [])) for r in self.results['regions'].values() if any(res['Resource Type'] == 'Instance' for res in r.get('lightsail', [])))},
-            {'Category': 'Lightsail Databases', 'Count': sum(len(r.get('lightsail', [])) for r in self.results['regions'].values() if any(res['Resource Type'] == 'Database' for res in r.get('lightsail', [])))},
-            {'Category': 'DynamoDB Tables', 'Count': sum(len(r.get('dynamodb', [])) for r in self.results['regions'].values())},
-            {'Category': 'Bedrock Models', 'Count': sum(len(r.get('bedrock', [])) for r in self.results['regions'].values())},
-            {'Category': 'IAM Users', 'Count': len(self.results.get('global_services', {}).get('iam', {}).get('users', []))},
-            {'Category': 'IAM Roles', 'Count': len(self.results.get('global_services', {}).get('iam', {}).get('roles', []))},
-            {'Category': 'IAM Groups', 'Count': len(self.results.get('global_services', {}).get('iam', {}).get('groups', []))},
-            {'Category': 'S3 Buckets', 'Count': len(self.results.get('global_services', {}).get('s3', []))}
-        ]
-        self._write_dataframe(writer, 'Resource Counts', resource_counts, header_format)
+        self._write_resource_counts(writer, header_format)
 
         # Region Summary
         successful_regions = [r for r in self.results['regions'].values() if 'error' not in r]
@@ -198,6 +176,74 @@ class ReportGenerator:
                 'VPCs': len(data.get('vpc', [])),
                 'Lambda Functions': len(data.get('lambda', [])),
                 'DynamoDB Tables': len(data.get('dynamodb', [])),
-                'Bedrock Models': len(data.get('bedrock', []))
+                'Bedrock Models': len(data.get('bedrock', [])),
+                'Glue Resources': len(data.get('glue', [])),
             })
         self._write_dataframe(writer, 'Region Details', region_details, header_format)
+
+    def _write_resource_counts(self, writer: pd.ExcelWriter, header_format):
+        resource_counts = []
+        
+        for region, data in self.results['regions'].items():
+            for service, resources in data.items():
+                if service == 'glue':
+                    # Handle glue service counts
+                    resource_counts.extend([
+                        {'Category': 'Glue Databases', 'Count': len(resources.get('databases', []))},
+                        {'Category': 'Glue Jobs', 'Count': len(resources.get('jobs', []))},
+                        {'Category': 'Glue Crawlers', 'Count': len(resources.get('crawlers', []))}
+                    ])
+                elif service == 'athena':
+                    resource_counts.extend([
+                        {'Category': 'Athena Workgroups', 'Count': len(resources.get('workgroups', []))},
+                        {'Category': 'Athena Named Queries', 'Count': len(resources.get('named_queries', []))},
+                        {'Category': 'Athena Data Catalogs', 'Count': len(resources.get('data_catalogs', []))}
+                    ])
+                else:
+                    # Handle other services as before
+                    if resources:
+                        count = len(resources)
+                        category = f'{service.upper()} {self._get_resource_type(service)}'
+                        resource_counts.append({'Category': category, 'Count': count})
+        
+        df = pd.DataFrame(resource_counts)
+        df = df.groupby('Category')['Count'].sum().reset_index()
+        df.to_excel(writer, sheet_name='Resource Counts', index=False)
+        self._format_worksheet(writer, 'Resource Counts', df, header_format)
+
+    def _get_resource_type(self, service: str) -> str:
+        """Map service names to their resource type names for display"""
+        resource_types = {
+            'ec2': 'Instances',
+            'rds': 'Instances',
+            'vpc': 'Resources',
+            'lambda': 'Functions',
+            'lightsail': 'Instances',
+            'dynamodb': 'Tables',
+            'bedrock': 'Models',
+            'amplify': 'Apps',
+            's3': 'Buckets',
+            'iam': 'Resources',
+            'glue': 'Resources',  # This is handled separately in the code
+            'athena': 'Resources',  # This is handled separately in the code
+        }
+        return resource_types.get(service, 'Resources')
+
+    def _format_worksheet(self, writer: pd.ExcelWriter, sheet_name: str, df: pd.DataFrame, header_format: Any):
+        """Format worksheet with headers and column widths"""
+        worksheet = writer.sheets[sheet_name]
+        
+        # Format headers
+        for idx, col in enumerate(df.columns):
+            worksheet.write(0, idx, col, header_format)
+            
+            # Auto-adjust column width based on content
+            max_length = max(
+                df[col].astype(str).apply(len).max(),  # Max length of data
+                len(str(col))  # Length of column header
+            ) + 2  # Add some padding
+            
+            worksheet.set_column(idx, idx, max_length)
+
+        # Freeze the header row
+        worksheet.freeze_panes(1, 0)

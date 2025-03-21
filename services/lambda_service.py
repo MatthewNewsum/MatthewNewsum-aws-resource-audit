@@ -1,23 +1,24 @@
 from typing import Dict, List, Any
-import json
 from .base import AWSService
 
 class LambdaService(AWSService):
+    def __init__(self, session, region=None):
+        super().__init__(session, region)
+        self.client = session.client('lambda', region_name=region)
+        
     @property
     def service_name(self) -> str:
         return 'lambda'
 
     def audit(self) -> List[Dict[str, Any]]:
-        resources = []
-        paginator = self.client.get_paginator('list_functions')
-        
-        for page in paginator.paginate():
-            for function in page['Functions']:
-                function_details = self._get_function_details(function)
-                if function_details:
-                    resources.append(function_details)
-                    
-        return resources
+        functions = []
+        try:
+            paginator = self.client.get_paginator('list_functions')
+            for page in paginator.paginate():
+                functions.extend(page.get('Functions', []))
+        except Exception as e:
+            print(f"Error listing Lambda functions: {str(e)}")
+        return functions
 
     def _get_function_details(self, function: Dict) -> Dict[str, Any]:
         try:

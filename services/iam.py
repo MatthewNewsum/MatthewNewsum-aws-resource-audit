@@ -2,6 +2,11 @@ from typing import Dict, List, Any
 from .base import AWSService
 
 class IAMService(AWSService):
+    def __init__(self, session, region=None):
+        super().__init__(session, region)
+        # IAM is a global service, so we don't need a region
+        self.client = session.client('iam')
+        
     @property
     def service_name(self) -> str:
         return 'iam'

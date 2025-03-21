@@ -2,27 +2,32 @@ from typing import Dict, List, Any
 from .base import AWSService
 
 class VPCService(AWSService):
+    def __init__(self, session, region=None):
+        super().__init__(session, region)
+        self.client = session.client('ec2', region_name=region)  # VPC uses EC2 client
+        
     @property
     def service_name(self) -> str:
-        return 'ec2'  # VPC uses EC2 client
+        return 'vpc'
 
     def audit(self) -> List[Dict[str, Any]]:
-        vpc_resources = []
-        paginator = self.client.get_paginator('describe_vpcs')
-        
-        for page in paginator.paginate():
-            for vpc in page['Vpcs']:
-                vpc_details = self._get_vpc_details(vpc)
-                if vpc_details:
-                    vpc_resources.append(vpc_details)
-        
-        return vpc_resources
+        vpc_details = []
+        try:
+            response = self.client.describe_vpcs()
+            for vpc in response.get('Vpcs', []):
+                details = self._get_vpc_details(vpc)
+                if details:
+                    vpc_details.append(details)
+        except Exception as e:
+            print(f"Error listing VPCs: {str(e)}")
+        return vpc_details
 
     def _get_vpc_details(self, vpc: Dict) -> Dict[str, Any]:
         vpc_id = vpc['VpcId']
         try:
             base_details = self._get_base_vpc_info(vpc)
             additional_details = {
+                'subnets': self._get_subnets(vpc_id),
                 'route_tables': self._get_route_tables(vpc_id),
                 'security_groups': self._get_security_groups(vpc_id),
                 'vpc_endpoints': self._get_vpc_endpoints(vpc_id),
@@ -78,6 +83,16 @@ class VPCService(AWSService):
         return security_groups
 
     def _format_route_table(self, rt: Dict) -> Dict[str, Any]:
+        routes = []
+        for route in rt.get('Routes', []):
+            route_entry = {
+                'Destination': route.get('DestinationCidrBlock', route.get('DestinationPrefixListId', 'N/A')),
+                'Target': next((v for k, v in route.items() if k.endswith('Id') and v), 'N/A'),
+                'State': route.get('State', 'N/A'),
+                'Type': next((k.replace('Gateway', '').replace('Id', '') for k in route.keys() if k.endswith('Id')), 'N/A')
+            }
+            routes.append(route_entry)
+
         return {
             'Region': self.region,
             'VPC ID': rt.get('VpcId', 'N/A'),
@@ -86,7 +101,8 @@ class VPCService(AWSService):
                         if tag['Key'] == 'Name'), 'N/A'),
             'Main': any(assoc.get('Main', False) for assoc in rt.get('Associations', [])),
             'Associated Subnets': ', '.join([assoc['SubnetId'] for assoc in rt.get('Associations', []) 
-                                        if 'SubnetId' in assoc])
+                                        if 'SubnetId' in assoc]),
+            'Routes': routes
         }
 
     def _format_security_group(self, sg: Dict) -> Dict[str, Any]:
@@ -117,13 +133,70 @@ class VPCService(AWSService):
             return []
 
     def _get_transit_gateway_details(self, vpc_id: str) -> Dict[str, Any]:
-        return {
-            'attachments': [],
-            'route_tables': []
-        }
+        try:
+            # Get TGW attachments for this VPC
+            attachments = self.client.describe_transit_gateway_attachments(
+                Filters=[
+                    {'Name': 'resource-id', 'Values': [vpc_id]},
+                    {'Name': 'resource-type', 'Values': ['vpc']}
+                ]
+            )['TransitGatewayAttachments']
+
+            # Get TGW route tables associated with these attachments
+            route_tables = []
+            for attachment in attachments:
+                try:
+                    tgw_id = attachment['TransitGatewayId']
+                    response = self.client.describe_transit_gateway_route_tables(
+                        Filters=[{'Name': 'transit-gateway-id', 'Values': [tgw_id]}]
+                    )
+                    route_tables.extend(response['TransitGatewayRouteTables'])
+                except Exception as e:
+                    print(f"Error getting TGW route tables for {tgw_id}: {str(e)}")
+
+            return {
+                'attachments': [{
+                    'TransitGatewayId': att['TransitGatewayId'],
+                    'State': att['State'],
+                    'AssociationState': att.get('Association', {}).get('State', 'N/A'),
+                    'CreationTime': str(att['CreationTime'])
+                } for att in attachments],
+                'route_tables': [{
+                    'TransitGatewayRouteTableId': rt['TransitGatewayRouteTableId'],
+                    'State': rt['State'],
+                    'CreationTime': str(rt['CreationTime'])
+                } for rt in route_tables]
+            }
+        except Exception as e:
+            print(f"Error getting transit gateway details for VPC {vpc_id}: {str(e)}")
+            return {'attachments': [], 'route_tables': []}
+
+    def _get_subnets(self, vpc_id: str) -> List[Dict[str, Any]]:
+        subnets = []
+        try:
+            paginator = self.client.get_paginator('describe_subnets')
+            for page in paginator.paginate(Filters=[{'Name': 'vpc-id', 'Values': [vpc_id]}]):
+                for subnet in page['Subnets']:
+                    tags = {tag['Key']: tag['Value'] for tag in subnet.get('Tags', [])}
+                    subnets.append({
+                        'Region': self.region,
+                        'VPC ID': vpc_id,
+                        'Subnet ID': subnet['SubnetId'],
+                        'Name': tags.get('Name', 'N/A'),
+                        'CIDR Block': subnet['CidrBlock'],
+                        'Availability Zone': subnet['AvailabilityZone'],
+                        'State': subnet['State'],
+                        'Available IPs': subnet['AvailableIpAddressCount'],
+                        'Auto-assign Public IP': subnet.get('MapPublicIpOnLaunch', False),
+                        'Default for AZ': subnet.get('DefaultForAz', False)
+                    })
+        except Exception as e:
+            print(f"Error getting subnets for VPC {vpc_id}: {str(e)}")
+        return subnets
 
     def _get_resource_counts(self, details: Dict[str, List]) -> Dict[str, int]:
         return {
+            'Subnet Count': len(details['subnets']),
             'Route Tables': len(details['route_tables']),
             'Security Groups': len(details['security_groups']),
             'VPC Endpoints': len(details['vpc_endpoints']),

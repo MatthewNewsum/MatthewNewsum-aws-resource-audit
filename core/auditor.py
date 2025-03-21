@@ -13,6 +13,8 @@ from services.dynamodb import DynamoDBService
 from services.bedrock import BedrockService
 from services.iam import IAMService
 from services.s3 import S3Service
+from services.glue import GlueService
+from services.athena import AthenaService
 
 class AWSAuditor:
     def __init__(self, session: boto3.Session, regions: List[str], services: List[str]):
@@ -89,48 +91,47 @@ class AWSAuditor:
         regional_results = {}
         
         try:
-            if 'amplify' in self.services:
-                self.print_progress("  Checking Amplify apps...")
-                amplify_service = AmplifyService(self.session, region)
-                regional_results['amplify'] = amplify_service.audit()
-            
-            if 'ec2' in self.services:
-                self.print_progress("  Checking EC2 instances...")
-                ec2_service = EC2Service(self.session, region)
-                regional_results['ec2'] = ec2_service.audit()
-
-            if 'rds' in self.services:
-                self.print_progress("  Checking RDS instances...")
-                rds_service = RDSService(self.session, region)
-                regional_results['rds'] = rds_service.audit()
-
-            if 'vpc' in self.services:
-                self.print_progress("  Checking VPC resources...")
-                vpc_service = VPCService(self.session, region)
-                regional_results['vpc'] = vpc_service.audit()
-
-            if 'lambda' in self.services:
-                self.print_progress("  Checking Lambda functions...")
-                lambda_service = LambdaService(self.session, region)
-                regional_results['lambda'] = lambda_service.audit()
-                
-            if 'lightsail' in self.services:
-                self.print_progress("  Checking Lightsail resources...")
-                lightsail_service = LightsailService(self.session, region)
-                regional_results['lightsail'] = lightsail_service.audit()
-
-            if 'dynamodb' in self.services:
-                self.print_progress("  Checking DynamoDB tables...")
-                dynamodb_service = DynamoDBService(self.session, region)
-                regional_results['dynamodb'] = dynamodb_service.audit()
-
-            if 'bedrock' in self.services:
-                self.print_progress("  Checking Bedrock resources...")
-                bedrock_service = BedrockService(self.session, region)
-                regional_results['bedrock'] = bedrock_service.audit()
+            for service in self.services:
+                try:
+                    self.print_progress(f"  Checking {service}...")
+                    # Add service-specific handling here
+                    if service == 'amplify':
+                        service_instance = AmplifyService(self.session, region)
+                        regional_results[service] = service_instance.audit()
+                    elif service == 'ec2':
+                        service_instance = EC2Service(self.session, region)
+                        regional_results[service] = service_instance.audit()
+                    elif service == 'rds':
+                        service_instance = RDSService(self.session, region)
+                        regional_results[service] = service_instance.audit()
+                    elif service == 'vpc':
+                        service_instance = VPCService(self.session, region)
+                        regional_results[service] = service_instance.audit()
+                    elif service == 'lambda':
+                        service_instance = LambdaService(self.session, region)
+                        regional_results[service] = service_instance.audit()
+                    elif service == 'lightsail':
+                        service_instance = LightsailService(self.session, region)
+                        regional_results[service] = service_instance.audit()
+                    elif service == 'dynamodb':
+                        service_instance = DynamoDBService(self.session, region)
+                        regional_results[service] = service_instance.audit()
+                    elif service == 'bedrock':
+                        service_instance = BedrockService(self.session, region)
+                        regional_results[service] = service_instance.audit()
+                    elif service == 'glue':
+                        service_instance = GlueService(self.session, region)
+                        regional_results[service] = service_instance.audit()
+                    elif service == 'athena':
+                        service_instance = AthenaService(self.session, region)
+                        regional_results[service] = service_instance.audit()
+                except Exception as service_error:
+                    self.print_progress(f"Error in {service} service for region {region}: {str(service_error)}")
+                    regional_results[service] = {'error': str(service_error)}
+                    continue
 
             return regional_results
             
         except Exception as e:
-            print(f"Error in region {region}: {str(e)}")
+            self.print_progress(f"Error in region {region}: {str(e)}")
             return {'error': str(e)}

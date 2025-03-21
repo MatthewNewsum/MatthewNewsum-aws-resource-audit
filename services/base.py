@@ -3,35 +3,18 @@ from typing import Dict, Any, List
 import boto3
 from botocore.exceptions import ClientError
 
-class AWSService(ABC):
+class AWSService:
     def __init__(self, session: boto3.Session, region: str = None):
         self.session = session
         self.region = region
-        self.client = self._get_client()
-
-    def _get_client(self):
-        """Create boto3 client for the service"""
-        return self.session.client(
-            self.service_name,
-            region_name=self.region if self.region else None
-        )
-
-    @property
-    @abstractmethod
-    def service_name(self) -> str:
-        """Return AWS service name for boto3 client"""
-        pass
-
-    @abstractmethod
-    def audit(self) -> List[Dict[str, Any]]:
-        """Perform audit of the service and return results"""
-        pass
-
-    def handle_client_error(self, e: ClientError, resource: str) -> Dict[str, str]:
-        """Handle and format AWS client errors"""
-        return {
-            'service': self.service_name,
-            'resource': resource,
-            'error': str(e),
-            'region': self.region
-        }
+        
+    def get_client(self, service_name: str):
+        try:
+            # For global services (like IAM, S3), don't require region
+            if service_name in ['iam', 's3']:
+                return self.session.client(service_name)
+            # For regional services, always use the region
+            return self.session.client(service_name, region_name=self.region)
+        except Exception as e:
+            print(f"Error creating client for {service_name} in region {self.region}: {str(e)}")
+            raise

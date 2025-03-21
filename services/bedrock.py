@@ -3,6 +3,10 @@ from .base import AWSService
 from botocore.exceptions import EndpointConnectionError, ClientError
 
 class BedrockService(AWSService):
+    def __init__(self, session, region=None):
+        super().__init__(session, region)
+        self.client = session.client('bedrock', region_name=region)
+
     @property
     def service_name(self) -> str:
         return 'bedrock'

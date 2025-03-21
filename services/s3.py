@@ -2,6 +2,11 @@ from typing import Dict, List, Any
 from .base import AWSService
 
 class S3Service(AWSService):
+    def __init__(self, session, region=None):
+        super().__init__(session, region)
+        # S3 is a global service, so we don't need a region
+        self.client = session.client('s3')
+        
     @property
     def service_name(self) -> str:
         return 's3'
@@ -44,31 +49,27 @@ class S3Service(AWSService):
         return f"{size / 1024:.2f} KB"
 
     def audit(self) -> List[Dict[str, Any]]:
-        resources = []
-        buckets = self.client.list_buckets()['Buckets']
-        
-        for bucket in buckets:
-            try:
-                location = self.client.get_bucket_location(Bucket=bucket['Name'])
-                region = location['LocationConstraint'] or 'us-east-1'
+        buckets = []
+        try:
+            response = self.client.list_buckets()
+            for bucket in response['Buckets']:
+                bucket_details = {
+                    'Name': bucket['Name'],
+                    'CreationDate': str(bucket['CreationDate'])
+                }
                 
-                bucket_info = self._get_bucket_info(bucket['Name'])
-                metrics = self.get_bucket_metrics(bucket['Name'])
+                try:
+                    location = self.client.get_bucket_location(Bucket=bucket['Name'])
+                    bucket_details['Region'] = location.get('LocationConstraint', 'us-east-1')
+                except Exception as e:
+                    bucket_details['Region'] = f'Error getting location: {str(e)}'
                 
-                bucket_info.update({
-                    'BucketName': bucket['Name'],
-                    'CreationDate': str(bucket['CreationDate']),
-                    'Region': region,
-                    'Size': metrics['BucketSizeBytes'],
-                    'ObjectCount': metrics['NumberOfObjects']
-                })
+                buckets.append(bucket_details)
                 
-                resources.append(bucket_info)
-                
-            except Exception as e:
-                print(f"Error processing bucket {bucket['Name']}: {str(e)}")
-                
-        return resources
+        except Exception as e:
+            print(f"Error listing S3 buckets: {str(e)}")
+            
+        return buckets
 
     def _get_bucket_info(self, bucket_name: str) -> Dict[str, Any]:
         info = {}
