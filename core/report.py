@@ -1,37 +1,59 @@
-from collections import defaultdict
-from typing import Any, Dict, List
-import pandas as pd
-import json
-from datetime import datetime
-from pathlib import Path
-from config.settings import AVAILABLE_SERVICES
 import os
-import xlsxwriter
+import json
+import pandas as pd
+from datetime import datetime
+import traceback
+from typing import Any, Dict, List, Optional, Union
+
+class ReportGenerationError(Exception):
+    """Exception raised when report generation fails."""
+    pass
 
 class ReportGenerator:
-    def __init__(self, results: Dict[str, Any], output_dir: str):
+    def __init__(self, results: Dict, output_dir: str = 'results'):
+        """Initialize the ReportGenerator with audit results and output directory."""
         self.results = results
         self.output_dir = output_dir
-        self.timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-
+        self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Ensure output directory exists
+        os.makedirs(output_dir, exist_ok=True)
+    
     def generate_reports(self):
-        print("\nGenerating reports...")
-        json_path = self._save_json_report()
-        print(f"\nJSON report saved to: {json_path}")
-        
-        print("\nGenerating Excel report...")
-        excel_path = self._generate_excel_report()
-        print(f"Excel report saved to: {excel_path}")
-        
-        print("\nAudit complete!")
-
+        """Generate JSON and Excel reports from audit results."""
+        try:
+            print("\nGenerating reports...\n")
+            
+            # Generate JSON report
+            json_path = self._save_json_report()
+            print(f"JSON report saved to: {json_path}\n")
+            
+            # Generate Excel report
+            try:
+                print("Generating Excel report...")
+                excel_path = self._generate_excel_report()
+                print(f"Excel report saved to: {excel_path}")
+                return json_path, excel_path
+            except Exception as e:
+                print(f"Error generating Excel report: {str(e)}")
+                print(traceback.format_exc())
+                # Return just the JSON path if Excel generation fails
+                return json_path, None
+            
+        except Exception as e:
+            print(f"Error generating reports: {str(e)}")
+            print(traceback.format_exc())
+            raise ReportGenerationError(f"Failed to generate reports: {str(e)}")
+    
     def _save_json_report(self) -> str:
+        """Save audit results as JSON file."""
         json_path = os.path.join(self.output_dir, f'aws_inventory_{self.timestamp}.json')
         with open(json_path, 'w') as f:
             json.dump(self.results, f, indent=2, default=str)
         return json_path
 
     def _generate_excel_report(self) -> str:
+        """Generate Excel report with multiple sheets for different resource types."""
         excel_path = os.path.join(self.output_dir, f'aws_inventory_{self.timestamp}.xlsx')
         
         with pd.ExcelWriter(excel_path, engine='xlsxwriter') as writer:
@@ -44,206 +66,336 @@ class ReportGenerator:
             self._write_summary(writer, header_format)
 
         return excel_path
-
-    def _get_header_format(self, workbook: xlsxwriter.Workbook) -> Any:
+    
+    def _get_header_format(self, workbook) -> Any:
+        """Create and return a format for Excel headers."""
         return workbook.add_format({
             'bold': True,
-            'bg_color': '#0066cc',
-            'font_color': 'white',
+            'text_wrap': True,
+            'valign': 'top',
+            'fg_color': '#D7E4BC',
             'border': 1
         })
-
-    def _write_dataframe(self, writer: pd.ExcelWriter, sheet_name: str, 
-                        data: List[Dict[str, Any]], header_format: Any):
+    
+    def _write_dataframe(self, writer: pd.ExcelWriter, sheet_name: str, data: List[Dict], header_format: Any) -> None:
+        """Write a list of dictionaries to a sheet as a pandas DataFrame."""
+        # Handle empty data case
         if not data:
-            return
-
-        df = pd.DataFrame(data)
+            df = pd.DataFrame([{"No Data": "No resources found"}])
+        else:
+            # Convert list of dicts to DataFrame
+            df = pd.DataFrame(data)
+        
+        # Write to Excel
         df.to_excel(writer, sheet_name=sheet_name, index=False)
         
+        # Format the header
         worksheet = writer.sheets[sheet_name]
-        for idx, col in enumerate(df.columns):
-            worksheet.write(0, idx, col, header_format)
-            worksheet.set_column(idx, idx, len(str(col)) + 2)
+        for col_num, value in enumerate(df.columns.values):
+            worksheet.write(0, col_num, value, header_format)
         
-        print(f"  Added {len(data)} {sheet_name}")
+        # Adjust column width (optional)
+        for col_num, column in enumerate(df.columns):
+            max_width = max(
+                df[column].astype(str).map(len).max(),  # Width of largest data
+                len(column)  # Width of column header
+            ) + 2  # Add a little extra space
+            worksheet.set_column(col_num, col_num, max_width)
+        
+        print(f"  Added {len(df)} rows to {sheet_name}")
 
-    def _write_global_resources(self, writer: pd.ExcelWriter, header_format: Any):
-        if 'global_services' in self.results:
-            if 'iam' in self.results['global_services']:
-                iam_data = self.results['global_services']['iam']
-                if 'users' in iam_data:
-                    self._write_dataframe(writer, 'IAM Users', iam_data['users'], header_format)
-                if 'roles' in iam_data:
-                    self._write_dataframe(writer, 'IAM Roles', iam_data['roles'], header_format)
-                if 'groups' in iam_data:
-                    self._write_dataframe(writer, 'IAM Groups', iam_data['groups'], header_format)
+    def _write_global_resources(self, writer: pd.ExcelWriter, header_format: Any) -> None:
+        """Write global (non-regional) resources to Excel sheets."""
+        print("Writing global resources...")
+        
+        try:
+            if 'global_services' not in self.results:
+                print("No global services data available")
+                return
             
-            if 's3' in self.results['global_services']:
-                self._write_dataframe(writer, 'S3 Buckets', 
-                                    self.results['global_services']['s3'],
-                                    header_format)
-
-    def _write_regional_resources(self, writer: pd.ExcelWriter, header_format):
-        regional_data = defaultdict(list)
-        
-        for region, data in self.results['regions'].items():
-            for service, resources in data.items():
-                if not resources:
-                    continue
+            print(f"Available global services: {self.results['global_services'].keys()}")
+            
+            # Handle Route53 resources
+            if 'route53' in self.results['global_services']:
+                print("Processing Route53 data...")
+                route53_data = self.results['global_services']['route53']
+                print(f"Route53 data keys: {route53_data.keys()}")
+                
+                # Process hosted zones
+                if route53_data.get('hosted_zones'):
+                    hosted_zones = route53_data['hosted_zones']
+                    if isinstance(hosted_zones, list) and hosted_zones:
+                        print(f"Writing {len(hosted_zones)} hosted zones")
+                        self._write_dataframe(
+                            writer,
+                            'Route53 Hosted Zones',
+                            hosted_zones,
+                            header_format
+                        )
+                    else:
+                        print(f"No hosted zones to write or invalid data type: {type(hosted_zones)}")
+                
+                # Process health checks - ensure it's a list
+                if route53_data.get('health_checks'):
+                    health_checks = route53_data['health_checks']
+                    if isinstance(health_checks, str):
+                        print(f"WARNING: health_checks is a string: '{health_checks}', converting to empty list")
+                        health_checks = []
                     
-                if service == 'glue':
-                    # Handle glue service which has nested structure
-                    if 'databases' in resources:
-                        for db in resources['databases']:
-                            db['Region'] = region
-                            regional_data['Glue Databases'].append(db)
-                    if 'jobs' in resources:
-                        for job in resources['jobs']:
-                            job['Region'] = region
-                            regional_data['Glue Jobs'].append(job)
-                    if 'crawlers' in resources:
-                        for crawler in resources['crawlers']:
-                            crawler['Region'] = region
-                            regional_data['Glue Crawlers'].append(crawler)
-                elif service == 'athena':
-                    # Handle athena service which has nested structure
-                    if 'workgroups' in resources:
-                        for wg in resources['workgroups']:
-                            wg['Region'] = region
-                            regional_data['Athena Workgroups'].append(wg)
-                    if 'named_queries' in resources:
-                        for query in resources['named_queries']:
-                            query['Region'] = region
-                            regional_data['Athena Named Queries'].append(query)
-                    if 'data_catalogs' in resources:
-                        for catalog in resources['data_catalogs']:
-                            catalog['Region'] = region
-                            regional_data['Athena Data Catalogs'].append(catalog)
-                else:
-                    # Handle other services as before
-                    for resource in resources:
-                        if isinstance(resource, dict):
-                            resource['Region'] = region
-                            regional_data[f'{service.upper()} {self._get_resource_type(service)}'].append(resource)
-
-        # Write each resource type to its own worksheet
-        for resource_type, resources in regional_data.items():
-            if resources:
-                df = pd.DataFrame(resources)
-                df.to_excel(writer, sheet_name=resource_type, index=False)
-                self._format_worksheet(writer, resource_type, df, header_format)
-                print(f"  Added {len(resources)} {resource_type}")
-
-    def _write_resource_usage_by_region(self, writer: pd.ExcelWriter, header_format: Any):
-        usage_data = []
-        # Get services from config
-        services = {
-            service.upper(): service.lower() 
-            for service in AVAILABLE_SERVICES
-        }
-        
-        for region in self.results.get('regions', {}):
-            row = {'Region': region}
-            for service_name, service_key in services.items():
-                resources = self.results['regions'][region].get(service_key, [])
-                row[service_name] = '✓' if resources and len(resources) > 0 else '-'
-            usage_data.append(row)
+                    if health_checks:  # Only write if there are items
+                        print(f"Writing {len(health_checks)} health checks")
+                        self._write_dataframe(
+                            writer,
+                            'Route53 Health Checks',
+                            health_checks,
+                            header_format
+                        )
+                    else:
+                        print("No health checks to write")
+                
+                # Process traffic policies - ensure it's a list
+                if route53_data.get('traffic_policies'):
+                    traffic_policies = route53_data['traffic_policies']
+                    if isinstance(traffic_policies, str):
+                        print(f"WARNING: traffic_policies is a string: '{traffic_policies}', converting to empty list")
+                        traffic_policies = []
+                    
+                    if traffic_policies:  # Only write if there are items
+                        print(f"Writing {len(traffic_policies)} traffic policies")
+                        self._write_dataframe(
+                            writer,
+                            'Route53 Traffic Policies',
+                            traffic_policies,
+                            header_format
+                        )
+                    else:
+                        print("No traffic policies to write")
+                        
+            # Handle other global services here (IAM, etc.)
             
-        self._write_dataframe(writer, 'Resource Usage by Region', usage_data, header_format)
+        except Exception as e:
+            print(f"Error writing global resources: {str(e)}")
+            print(traceback.format_exc())
+            # Continue with the rest of the report rather than failing
 
-    def _write_summary(self, writer: pd.ExcelWriter, header_format: Any):
-        self._write_resource_counts(writer, header_format)
-
-        # Region Summary
-        successful_regions = [r for r in self.results['regions'].values() if 'error' not in r]
-        failed_regions = [r for r in self.results['regions'].values() if 'error' in r]
+    def _write_regional_resources(self, writer: pd.ExcelWriter, header_format: Any) -> None:
+        """Write regional resources to Excel sheets."""
+        print("Writing regional resources...")
         
-        region_summary = [
-            {'Category': 'Total Regions', 'Count': len(self.results.get('regions', {}))},
-            {'Category': 'Successful Regions', 'Count': len(successful_regions)},
-            {'Category': 'Failed Regions', 'Count': len(failed_regions)}
-        ]
-        self._write_dataframe(writer, 'Region Summary', region_summary, header_format)
+        # Process autoscaling resources
+        auto_scaling_groups = []
+        launch_configurations = []
+        launch_templates = []
+        target_groups = []
+        load_balancers = []
+        
+        # Extract autoscaling data from all regions
+        for region, services in self.results['regions'].items():
+            if 'autoscaling' in services and isinstance(services['autoscaling'], dict):
+                autoscaling_data = services['autoscaling']
+                
+                # Process auto scaling groups
+                if 'auto_scaling_groups' in autoscaling_data:
+                    for asg in autoscaling_data['auto_scaling_groups']:
+                        auto_scaling_groups.append(asg)
+                
+                # Process launch configurations
+                if 'launch_configurations' in autoscaling_data:
+                    for lc in autoscaling_data['launch_configurations']:
+                        launch_configurations.append(lc)
+                
+                # Process launch templates
+                if 'launch_templates' in autoscaling_data:
+                    for lt in autoscaling_data['launch_templates']:
+                        launch_templates.append(lt)
+                
+                # Process target groups
+                if 'target_groups' in autoscaling_data:
+                    for tg in autoscaling_data['target_groups']:
+                        target_groups.append(tg)
+                
+                # Process load balancers
+                if 'load_balancers' in autoscaling_data:
+                    for lb in autoscaling_data['load_balancers']:
+                        load_balancers.append(lb)
+        
+        # Write autoscaling data if available
+        if auto_scaling_groups:
+            self._write_dataframe(writer, 'Auto Scaling Groups', auto_scaling_groups, header_format)
+        
+        if launch_configurations:
+            self._write_dataframe(writer, 'Launch Configurations', launch_configurations, header_format)
+        
+        if launch_templates:
+            self._write_dataframe(writer, 'Launch Templates', launch_templates, header_format)
+        
+        if target_groups:
+            self._write_dataframe(writer, 'Target Groups', target_groups, header_format)
+        
+        if load_balancers:
+            self._write_dataframe(writer, 'Load Balancers', load_balancers, header_format)
+        
+        # Existing resource processing code...
+        if 'regions' not in self.results:
+            return
 
-        # Per-Region Details
-        region_details = []
-        for region, data in self.results.get('regions', {}).items():
-            region_details.append({
-                'Region': region,
-                'EC2 Instances': len(data.get('ec2', [])),
-                'RDS Instances': len(data.get('rds', [])),
-                'VPCs': len(data.get('vpc', [])),
-                'Lambda Functions': len(data.get('lambda', [])),
-                'DynamoDB Tables': len(data.get('dynamodb', [])),
-                'Bedrock Models': len(data.get('bedrock', [])),
-                'Glue Resources': len(data.get('glue', [])),
-            })
-        self._write_dataframe(writer, 'Region Details', region_details, header_format)
+        # Create a sheet for each resource type across all regions
+        resource_types_map = {
+            'ec2': 'EC2 Instances',
+            'rds': 'RDS Instances',
+            'lambda': 'Lambda Functions',
+            'dynamodb': 'DynamoDB Tables',
+            'bedrock': 'Bedrock Models',
+            's3': 'S3 Buckets',
+            # Add other resource types as needed
+        }
 
-    def _write_resource_counts(self, writer: pd.ExcelWriter, header_format):
+        # For each resource type, collect data from all regions
+        for resource_type, sheet_name in resource_types_map.items():
+            all_resources = []
+            
+            # Collect resources of this type from all regions
+            for region, services in self.results['regions'].items():
+                if resource_type in services and services[resource_type]:
+                    for resource in services[resource_type]:
+                        # Ensure 'Region' is included if not already
+                        if 'Region' not in resource and region:
+                            resource['Region'] = region
+                        all_resources.append(resource)
+            
+            # Write the collected resources to a sheet
+            if all_resources:
+                self._write_dataframe(writer, sheet_name, all_resources, header_format)
+
+    def _write_resource_usage_by_region(self, writer: pd.ExcelWriter, header_format: Any) -> None:
+        """Write resource usage summary by region."""
+        if 'regions' not in self.results:
+            return
+
+        region_usage = []
+        for region, services in self.results['regions'].items():
+            usage = {'Region': region}
+            
+            # Count EC2 instances
+            if 'ec2' in services:
+                usage['EC2 Instances'] = len(services['ec2'])
+            
+            # Count RDS instances
+            if 'rds' in services:
+                usage['RDS Instances'] = len(services['rds'])
+            
+            # Count Lambda functions
+            if 'lambda' in services:
+                usage['Lambda Functions'] = len(services['lambda'])
+            
+            # Count DynamoDB tables
+            if 'dynamodb' in services:
+                usage['DynamoDB Tables'] = len(services['dynamodb'])
+            
+            # Count Bedrock models
+            if 'bedrock' in services:
+                usage['Bedrock Models'] = len(services['bedrock'])
+            
+            # Add VPC resources - handle the special structure for VPC data
+            if 'vpc' in services:
+                vpc_count = len(services['vpc'])
+                usage['VPCs'] = vpc_count
+                
+                # If you need more VPC-specific counts
+                if vpc_count > 0:
+                    for vpc in services['vpc']:
+                        if 'Subnet Count' in vpc:
+                            usage['Subnets'] = usage.get('Subnets', 0) + vpc['Subnet Count']
+                        if 'Security Groups' in vpc:
+                            usage['Security Groups'] = usage.get('Security Groups', 0) + vpc['Security Groups']
+            
+            # Add other resource types as needed
+            
+            region_usage.append(usage)
+        
+        if region_usage:
+            self._write_dataframe(writer, 'Resource Usage by Region', region_usage, header_format)
+
+    def _write_summary(self, writer: pd.ExcelWriter, header_format: Any) -> None:
+        """Write overall summary information."""
+        self._write_resource_counts(writer, header_format)
+    
+    def _write_resource_counts(self, writer: pd.ExcelWriter, header_format: Any) -> None:
+        """Write a summary of resource counts across all regions."""
         resource_counts = []
         
-        for region, data in self.results['regions'].items():
-            for service, resources in data.items():
-                if service == 'glue':
-                    # Handle glue service counts
-                    resource_counts.extend([
-                        {'Category': 'Glue Databases', 'Count': len(resources.get('databases', []))},
-                        {'Category': 'Glue Jobs', 'Count': len(resources.get('jobs', []))},
-                        {'Category': 'Glue Crawlers', 'Count': len(resources.get('crawlers', []))}
-                    ])
-                elif service == 'athena':
-                    resource_counts.extend([
-                        {'Category': 'Athena Workgroups', 'Count': len(resources.get('workgroups', []))},
-                        {'Category': 'Athena Named Queries', 'Count': len(resources.get('named_queries', []))},
-                        {'Category': 'Athena Data Catalogs', 'Count': len(resources.get('data_catalogs', []))}
-                    ])
-                else:
-                    # Handle other services as before
-                    if resources:
-                        count = len(resources)
-                        category = f'{service.upper()} {self._get_resource_type(service)}'
-                        resource_counts.append({'Category': category, 'Count': count})
-        
-        df = pd.DataFrame(resource_counts)
-        df = df.groupby('Category')['Count'].sum().reset_index()
-        df.to_excel(writer, sheet_name='Resource Counts', index=False)
-        self._format_worksheet(writer, 'Resource Counts', df, header_format)
-
-    def _get_resource_type(self, service: str) -> str:
-        """Map service names to their resource type names for display"""
-        resource_types = {
-            'ec2': 'Instances',
-            'rds': 'Instances',
-            'vpc': 'Resources',
-            'lambda': 'Functions',
-            'lightsail': 'Instances',
-            'dynamodb': 'Tables',
-            'bedrock': 'Models',
-            'amplify': 'Apps',
-            's3': 'Buckets',
-            'iam': 'Resources',
-            'glue': 'Resources',  # This is handled separately in the code
-            'athena': 'Resources',  # This is handled separately in the code
-        }
-        return resource_types.get(service, 'Resources')
-
-    def _format_worksheet(self, writer: pd.ExcelWriter, sheet_name: str, df: pd.DataFrame, header_format: Any):
-        """Format worksheet with headers and column widths"""
-        worksheet = writer.sheets[sheet_name]
-        
-        # Format headers
-        for idx, col in enumerate(df.columns):
-            worksheet.write(0, idx, col, header_format)
+        try:
+            # Handle global services
+            if 'global_services' in self.results:
+                # Route53 resources
+                if 'route53' in self.results['global_services']:
+                    route53_data = self.results['global_services']['route53']
+                    if isinstance(route53_data, dict):  # Check if it's a dictionary
+                        # Get counts for Route53 resources safely
+                        hosted_zones = route53_data.get('hosted_zones', [])
+                        health_checks = route53_data.get('health_checks', [])
+                        traffic_policies = route53_data.get('traffic_policies', [])
+                        
+                        # Ensure these are actually lists before getting their length
+                        if not isinstance(hosted_zones, list):
+                            print(f"WARNING: hosted_zones is not a list: {type(hosted_zones)}")
+                            hosted_zones = []
+                        if not isinstance(health_checks, list):
+                            print(f"WARNING: health_checks is not a list: {type(health_checks)}")
+                            health_checks = []
+                        if not isinstance(traffic_policies, list):
+                            print(f"WARNING: traffic_policies is not a list: {type(traffic_policies)}")
+                            traffic_policies = []
+                        
+                        resource_counts.extend([
+                            {'Category': 'Route53 Hosted Zones', 'Count': len(hosted_zones)},
+                            {'Category': 'Route53 Health Checks', 'Count': len(health_checks)},
+                            {'Category': 'Route53 Traffic Policies', 'Count': len(traffic_policies)}
+                        ])
             
-            # Auto-adjust column width based on content
-            max_length = max(
-                df[col].astype(str).apply(len).max(),  # Max length of data
-                len(str(col))  # Length of column header
-            ) + 2  # Add some padding
+            # Regional resources
+            if 'regions' in self.results:
+                # Initialize counters
+                ec2_count = 0
+                rds_count = 0
+                lambda_count = 0
+                dynamodb_count = 0
+                bedrock_count = 0
+                vpc_count = 0
+                s3_count = 0
+                
+                # Count resources across all regions
+                for region, services in self.results['regions'].items():
+                    if 'ec2' in services:
+                        ec2_count += len(services['ec2'])
+                    if 'rds' in services:
+                        rds_count += len(services['rds'])
+                    if 'lambda' in services:
+                        lambda_count += len(services['lambda'])
+                    if 'dynamodb' in services:
+                        dynamodb_count += len(services['dynamodb'])
+                    if 'bedrock' in services:
+                        bedrock_count += len(services['bedrock'])
+                    if 'vpc' in services:
+                        vpc_count += len(services['vpc'])
+                    if 's3' in services:
+                        s3_count += len(services['s3'])
+                
+                # Add counts to the resource_counts list
+                resource_counts.extend([
+                    {'Category': 'EC2 Instances', 'Count': ec2_count},
+                    {'Category': 'RDS Instances', 'Count': rds_count},
+                    {'Category': 'Lambda Functions', 'Count': lambda_count},
+                    {'Category': 'DynamoDB Tables', 'Count': dynamodb_count},
+                    {'Category': 'Bedrock Models', 'Count': bedrock_count},
+                    {'Category': 'VPCs', 'Count': vpc_count},
+                    {'Category': 'S3 Buckets', 'Count': s3_count}
+                ])
             
-            worksheet.set_column(idx, idx, max_length)
-
-        # Freeze the header row
-        worksheet.freeze_panes(1, 0)
+            # Write the summary data
+            if resource_counts:
+                self._write_dataframe(writer, 'Resource Summary', resource_counts, header_format)
+                
+        except Exception as e:
+            print(f"Error in _write_resource_counts: {str(e)}")
+            print(traceback.format_exc())

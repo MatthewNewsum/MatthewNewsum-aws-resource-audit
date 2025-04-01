@@ -1,6 +1,7 @@
 ###  Services Added   ###
 
 - Amplify
+- AutoScaling
 - Bedrock
 - DynamoDB
 - EC2
@@ -24,9 +25,10 @@
 
 ###  Things to clean up   ###
 
--Alphabetize core/report.py dictionary and other lists
--Alphabetize core/auditor file imports section AND def audit_region section
--Alphabetize the tabs in the excel output report
+- Alphabetize core/report.py dictionary and other lists
+- Alphabetize core/auditor file imports section AND def audit_region section
+- Alphabetize the tabs in the excel output report
+- update README.md - Excel Report Worksheets
 
 
 ###   Things to fix   ####

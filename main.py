@@ -4,7 +4,7 @@ import boto3
 import os
 from core.auditor import AWSAuditor
 from core.report import ReportGenerator
-from config.settings import AVAILABLE_SERVICES, DEFAULT_MAX_WORKERS
+from config.settings import AVAILABLE_SERVICES, DEFAULT_MAX_WORKERS, DEFAULT_SERVICES
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='AWS Resource Audit Tool')
@@ -19,7 +19,7 @@ def parse_arguments():
     )
     parser.add_argument('--services', 
                        type=str,
-                       default='ec2,rds,vpc,lambda,dynamodb,bedrock,glue,athena',
+                       default=','.join(DEFAULT_SERVICES),  # Use the list from settings.py
                        help='AWS services to audit')
     parser.add_argument('--output-dir', type=str,
                        help='Directory for output files (default: "results")',
@@ -65,7 +65,10 @@ def main():
         print(f"Using regions: {regions}")
         
         # Handle services parameter
-        services = args.services.lower().split(',') if args.services != 'all' else AVAILABLE_SERVICES
+        if args.services == 'all':
+            services = AVAILABLE_SERVICES
+        else:
+            services = args.services.lower().split(',')
         print(f"Auditing services: {services}")
         
         # Initialize auditor with both parameters

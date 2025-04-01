@@ -1,6 +1,23 @@
 # AWS Service configuration
+DEFAULT_SERVICES = [
+    'autoscaling',
+    'route53', 
+    'athena',
+    'bedrock',
+    'dynamodb',
+    'ec2',
+    'iam',
+    'lambda',
+    'lightsail',
+    'rds',
+    's3',
+    'vpc',
+    'glue'
+]
+
 AVAILABLE_SERVICES = [
-    'amplify',
+    'autoscaling',
+    'route53', 
     'athena',
     'bedrock',
     'dynamodb',

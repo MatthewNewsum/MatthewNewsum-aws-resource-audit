@@ -35,7 +35,7 @@ A Python tool for auditing AWS resources across multiple regions and services.
 Run the script with optional parameters:
 
 ```bash
-python main.py [--regions REGIONS] [--services SERVICES] [--output-dir OUTPUT_DIR]
+python main.py [--regions REGIONS] [--services SERVICES] [--output-dir OUTPUT_DIR] [--profile AWS_PROFILE_NAME]
 ```
 
 ### Parameters
@@ -49,6 +49,7 @@ python main.py [--regions REGIONS] [--services SERVICES] [--output-dir OUTPUT_DI
 
 - amplify
 - athena
+- autoscaling
 - bedrock
 - dynamodb
 - ec2
@@ -56,6 +57,7 @@ python main.py [--regions REGIONS] [--services SERVICES] [--output-dir OUTPUT_DI
 - iam
 - lambda
 - rds
+- route53
 - s3
 - vpc
 
@@ -102,10 +104,12 @@ The tool generates two report files:
 - Lightsail
 - DynamoDB Tables
 - Bedrock Models
+- Auto Scaling Groups
+- Load Balancers
+- Target Groups
 - Resource Usage by Region
 - Resource Counts
 - Region Summary
-- Region Details
 
 ## Error Handling
 

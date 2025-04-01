@@ -1,0 +1,23 @@
+
+    IAM
+    Organizations
+    Control Tower
+    SSO
+    RAM (Resource Access Manager)
+    VPC
+    Client VPN
+    Route 53
+    ELB (Elastic Load Balancer)
+    EKS
+    Lambda
+    EC2
+    S3
+    FSx
+    DynamoDB
+    CloudWatch
+    Security Hub
+    Kinesis Firehose
+    Elasticsearch Service
+    Lake Formation
+    RDS
+    

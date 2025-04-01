@@ -4,8 +4,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
 from services.base import AWSService
 from services.amplify import AmplifyService
+from services.autoscaling import AutoScalingService
 from services.ec2 import EC2Service
 from services.rds import RDSService
+from services.route53 import Route53Service
 from services.vpc import VPCService
 from services.lambda_service import LambdaService
 from services.lightsail import LightsailService
@@ -34,6 +36,38 @@ class AWSAuditor:
     def audit_global_services(self) -> Dict[str, Any]:
         global_results = {}
         
+        # Make Route53 the first global service to audit
+        if 'route53' in self.services:
+            self.print_progress("\nAuditing Route53 resources...")
+            try:
+                route53_service = Route53Service(self.session)
+                print("Created Route53Service instance")  # Debug
+                
+                route53_results = route53_service.audit()
+                print(f"Route53 audit completed with keys: {route53_results.keys()}")  # Debug
+                
+                # Check if we have any actual data
+                has_data = any(len(resources) > 0 for resources in route53_results.values())
+                if has_data:
+                    print(f"Route53 has data, adding to global services")  # Debug
+                    global_results['route53'] = route53_results
+                else:
+                    print("No Route53 data found")  # Debug
+                    # Add empty data structure to ensure it appears in reports
+                    global_results['route53'] = {
+                        'hosted_zones': [],
+                        'health_checks': [],
+                        'traffic_policies': []
+                    }
+            except Exception as e:
+                print(f"Error in Route53 audit: {str(e)}")  # Debug
+                # Add empty data structure even on error
+                global_results['route53'] = {
+                    'hosted_zones': [],
+                    'health_checks': [],
+                    'traffic_policies': []
+                }
+
         if 'iam' in self.services:
             self.print_progress("\nAuditing IAM resources...")
             iam_service = IAMService(self.session)
@@ -43,7 +77,7 @@ class AWSAuditor:
             self.print_progress("\nAuditing S3 buckets...")
             s3_service = S3Service(self.session)
             global_results['s3'] = s3_service.audit()
-            
+        
         return global_results
 
     def run_audit(self, max_workers: int = 10) -> Dict[str, Any]:
@@ -69,6 +103,15 @@ class AWSAuditor:
                     
                     if result:
                         self.print_progress(f"\nResources found in {region}:")
+                        # Add these lines to display autoscaling resources
+                        if 'autoscaling' in result and isinstance(result['autoscaling'], dict):
+                            autoscaling_data = result['autoscaling']
+                            self.print_progress(f"    Auto Scaling Groups: {len(autoscaling_data.get('auto_scaling_groups', []))}")
+                            self.print_progress(f"    Launch Configurations: {len(autoscaling_data.get('launch_configurations', []))}")
+                            self.print_progress(f"    Launch Templates: {len(autoscaling_data.get('launch_templates', []))}")
+                            self.print_progress(f"    Target Groups: {len(autoscaling_data.get('target_groups', []))}")
+                            self.print_progress(f"    Load Balancers: {len(autoscaling_data.get('load_balancers', []))}")
+                        
                         self.print_progress(f"    EC2 instances: {len(result.get('ec2', []))}")
                         self.print_progress(f"    RDS instances: {len(result.get('rds', []))}")
                         self.print_progress(f"    VPC resources: {len(result.get('vpc', []))}")
@@ -91,39 +134,27 @@ class AWSAuditor:
         regional_results = {}
         
         try:
+            service_map = {
+                'amplify': AmplifyService,
+                'athena': AthenaService,
+                'autoscaling': AutoScalingService,  # Add this line
+                'bedrock': BedrockService,
+                'dynamodb': DynamoDBService,
+                'ec2': EC2Service,
+                'glue': GlueService,
+                'iam': IAMService,
+                'lambda': LambdaService,
+                'lightsail': LightsailService,
+                'rds': RDSService,
+                'route53': Route53Service,
+                's3': S3Service,
+                'vpc': VPCService
+            }
             for service in self.services:
                 try:
                     self.print_progress(f"  Checking {service}...")
-                    # Add service-specific handling here
-                    if service == 'amplify':
-                        service_instance = AmplifyService(self.session, region)
-                        regional_results[service] = service_instance.audit()
-                    elif service == 'ec2':
-                        service_instance = EC2Service(self.session, region)
-                        regional_results[service] = service_instance.audit()
-                    elif service == 'rds':
-                        service_instance = RDSService(self.session, region)
-                        regional_results[service] = service_instance.audit()
-                    elif service == 'vpc':
-                        service_instance = VPCService(self.session, region)
-                        regional_results[service] = service_instance.audit()
-                    elif service == 'lambda':
-                        service_instance = LambdaService(self.session, region)
-                        regional_results[service] = service_instance.audit()
-                    elif service == 'lightsail':
-                        service_instance = LightsailService(self.session, region)
-                        regional_results[service] = service_instance.audit()
-                    elif service == 'dynamodb':
-                        service_instance = DynamoDBService(self.session, region)
-                        regional_results[service] = service_instance.audit()
-                    elif service == 'bedrock':
-                        service_instance = BedrockService(self.session, region)
-                        regional_results[service] = service_instance.audit()
-                    elif service == 'glue':
-                        service_instance = GlueService(self.session, region)
-                        regional_results[service] = service_instance.audit()
-                    elif service == 'athena':
-                        service_instance = AthenaService(self.session, region)
+                    if service in service_map:
+                        service_instance = service_map[service](self.session, region)
                         regional_results[service] = service_instance.audit()
                 except Exception as service_error:
                     self.print_progress(f"Error in {service} service for region {region}: {str(service_error)}")
