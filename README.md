@@ -52,6 +52,7 @@ python main.py [--regions REGIONS] [--services SERVICES] [--output-dir OUTPUT_DI
 - athena
 - autoscaling
 - bedrock
+- config
 - dynamodb
 - ec2
 - fsx
@@ -113,6 +114,10 @@ The tool generates two report files:
 - Resource Usage by Region
 - Resource Counts
 - Region Summary
+- Config Recorders
+- Config Rules
+- Config Conformance Packs
+- Config Aggregators
 
 ## Error Handling
 

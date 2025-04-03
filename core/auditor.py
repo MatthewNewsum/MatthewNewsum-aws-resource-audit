@@ -18,6 +18,7 @@ from services.s3 import S3Service
 from services.glue import GlueService
 from services.athena import AthenaService
 from services.fsx import FSxService
+from services.config import ConfigService
 
 class AWSAuditor:
     def __init__(self, session: boto3.Session, regions: List[str], services: List[str]):
@@ -104,7 +105,6 @@ class AWSAuditor:
                     
                     if result:
                         self.print_progress(f"\nResources found in {region}:")
-                        # Add these lines to display autoscaling resources
                         if 'autoscaling' in result and isinstance(result['autoscaling'], dict):
                             autoscaling_data = result['autoscaling']
                             self.print_progress(f"    Auto Scaling Groups: {len(autoscaling_data.get('auto_scaling_groups', []))}")
@@ -112,6 +112,13 @@ class AWSAuditor:
                             self.print_progress(f"    Launch Templates: {len(autoscaling_data.get('launch_templates', []))}")
                             self.print_progress(f"    Target Groups: {len(autoscaling_data.get('target_groups', []))}")
                             self.print_progress(f"    Load Balancers: {len(autoscaling_data.get('load_balancers', []))}")
+                        
+                        if 'config' in result and isinstance(result['config'], dict):
+                            config_data = result['config']
+                            self.print_progress(f"    Config Recorders: {len(config_data.get('recorders', []))}")
+                            self.print_progress(f"    Config Rules: {len(config_data.get('rules', []))}")
+                            self.print_progress(f"    Conformance Packs: {len(config_data.get('conformance_packs', []))}")
+                            self.print_progress(f"    Config Aggregators: {len(config_data.get('aggregators', []))}")
                         
                         self.print_progress(f"    EC2 instances: {len(result.get('ec2', []))}")
                         self.print_progress(f"    RDS instances: {len(result.get('rds', []))}")
@@ -140,6 +147,7 @@ class AWSAuditor:
                 'athena': AthenaService,
                 'autoscaling': AutoScalingService,
                 'bedrock': BedrockService,
+                'config': ConfigService,
                 'dynamodb': DynamoDBService,
                 'ec2': EC2Service,
                 'fsx': FSxService,

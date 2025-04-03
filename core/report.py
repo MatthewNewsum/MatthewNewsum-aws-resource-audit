@@ -279,89 +279,131 @@ class ReportGenerator:
             # Write the collected resources to a sheet
             if all_resources:
                 self._write_dataframe(writer, sheet_name, all_resources, header_format)
+        
+        # Add this section for Config resources
+        config_recorders = []
+        config_rules = []
+        config_conformance_packs = []
+        config_aggregators = []
+        
+        for region, data in self.results['regions'].items():
+            if 'config' in data and isinstance(data['config'], dict):
+                config_data = data['config']
+                for recorder in config_data.get('recorders', []):
+                    recorder['Region'] = region
+                    config_recorders.append(recorder)
+                for rule in config_data.get('rules', []):
+                    rule['Region'] = region
+                    config_rules.append(rule)
+                for pack in config_data.get('conformance_packs', []):
+                    pack['Region'] = region
+                    config_conformance_packs.append(pack)
+                for agg in config_data.get('aggregators', []):
+                    agg['Region'] = region
+                    config_aggregators.append(agg)
+        
+        # Write Config recorders
+        if config_recorders:
+            df_recorders = pd.DataFrame(config_recorders)
+            df_recorders.to_excel(writer, sheet_name='Config Recorders', index=False)
+            self._format_sheet(writer.sheets['Config Recorders'], df_recorders, header_format)
+        
+        # Write Config rules
+        if config_rules:
+            df_rules = pd.DataFrame(config_rules)
+            df_rules.to_excel(writer, sheet_name='Config Rules', index=False)
+            self._format_sheet(writer.sheets['Config Rules'], df_rules, header_format)
+        
+        # Write Conformance packs
+        if config_conformance_packs:
+            df_packs = pd.DataFrame(config_conformance_packs)
+            df_packs.to_excel(writer, sheet_name='Config Conformance Packs', index=False)
+            self._format_sheet(writer.sheets['Config Conformance Packs'], df_packs, header_format)
+        
+        # Write Config aggregators
+        if config_aggregators:
+            df_aggregators = pd.DataFrame(config_aggregators)
+            df_aggregators.to_excel(writer, sheet_name='Config Aggregators', index=False)
+            self._format_sheet(writer.sheets['Config Aggregators'], df_aggregators, header_format)
 
-    def _write_resource_usage_by_region(self, writer: pd.ExcelWriter, header_format: Any) -> None:
-        """Write resource usage by region matrix."""
+    def _write_resource_usage_by_region(self, writer, header_format):
+        """Write resource usage by region."""
         print("Writing resource usage by region...")
         
-        # Collect all resource types and regions
-        regions = []
-        resource_counts = {}
+        # Initialize the data structure
+        region_rows = []
+        # Initialize total_by_type dictionary here
+        total_by_type = {}
         
-        for region, services in self.results['regions'].items():
-            regions.append(region)
-            
-            # Add these lines to track autoscaling resources
-            if 'autoscaling' in services and isinstance(services['autoscaling'], dict):
-                autoscaling_data = services['autoscaling']
-                resource_counts.setdefault(region, {})
-                
-                # Count auto scaling groups
-                if 'auto_scaling_groups' in autoscaling_data:
-                    resource_counts[region]['Auto Scaling Groups'] = len(autoscaling_data['auto_scaling_groups'])
-                
-                # Count launch configurations
-                if 'launch_configurations' in autoscaling_data:
-                    resource_counts[region]['Launch Configurations'] = len(autoscaling_data['launch_configurations'])
-                
-                # Count launch templates
-                if 'launch_templates' in autoscaling_data:
-                    resource_counts[region]['Launch Templates'] = len(autoscaling_data['launch_templates'])
-                
-                # Count target groups
-                if 'target_groups' in autoscaling_data:
-                    resource_counts[region]['Target Groups'] = len(autoscaling_data['target_groups'])
-                
-                # Count load balancers
-                if 'load_balancers' in autoscaling_data:
-                    resource_counts[region]['Load Balancers'] = len(autoscaling_data['load_balancers'])
-            
-            # Rest of the existing code for other services...
-            usage = {'Region': region}
-            
-            # Count EC2 instances
-            if 'ec2' in services:
-                usage['EC2 Instances'] = len(services['ec2'])
-            
-            # Count RDS instances
-            if 'rds' in services:
-                usage['RDS Instances'] = len(services['rds'])
-            
-            # Count Lambda functions
-            if 'lambda' in services:
-                usage['Lambda Functions'] = len(services['lambda'])
-            
-            # Count DynamoDB tables
-            if 'dynamodb' in services:
-                usage['DynamoDB Tables'] = len(services['dynamodb'])
-            
-            # Count Bedrock models
-            if 'bedrock' in services:
-                usage['Bedrock Models'] = len(services['bedrock'])
-            
-            # Add VPC resources - handle the special structure for VPC data
-            if 'vpc' in services:
-                vpc_count = len(services['vpc'])
-                usage['VPCs'] = vpc_count
-                
-                # If you need more VPC-specific counts
-                if vpc_count > 0:
-                    for vpc in services['vpc']:
-                        if 'Subnet Count' in vpc:
-                            usage['Subnets'] = usage.get('Subnets', 0) + vpc['Subnet Count']
-                        if 'Security Groups' in vpc:
-                            usage['Security Groups'] = usage.get('Security Groups', 0) + vpc['Security Groups']
-            
-            # Add FSx resources
-            if 'fsx' in services:
-                usage['FSx'] = len(services['fsx'])
-            
-            # Add other resource types as needed
-            
-            resource_counts[region] = usage
+        # Update the resource_type list to include Config resources
+        resource_types = [
+            ('EC2 Instances', 'ec2'),
+            ('RDS Instances', 'rds'),
+            ('S3 Buckets', 's3'),
+            ('Lambda Functions', 'lambda'),
+            ('DynamoDB Tables', 'dynamodb'),
+            ('VPCs', 'vpc'),
+            ('Auto Scaling Groups', 'autoscaling.auto_scaling_groups'),
+            ('Launch Configurations', 'autoscaling.launch_configurations'),
+            ('Launch Templates', 'autoscaling.launch_templates'),
+            ('Target Groups', 'autoscaling.target_groups'),
+            ('Load Balancers', 'autoscaling.load_balancers'),
+            ('Config Recorders', 'config.recorders'),
+            ('Config Rules', 'config.rules'),
+            ('Config Conformance Packs', 'config.conformance_packs'),
+            ('Config Aggregators', 'config.aggregators'),
+            ('Athena Workgroups', 'athena.workgroups'),
+            ('Bedrock Models', 'bedrock'),
+            ('FSx File Systems', 'fsx')
+        ]
         
-        if resource_counts:
-            self._write_dataframe(writer, 'Resource Usage by Region', resource_counts, header_format)
+        # Initialize the total_by_type counters for all resource types
+        for resource_name, _ in resource_types:
+            total_by_type[resource_name] = 0
+            
+        # Calculate counts by region
+        for region, data in self.results['regions'].items():
+            region_total = 0
+            row = {'Region': region}
+            
+            for resource_name, resource_path in resource_types:
+                count = 0
+                
+                if '.' in resource_path:  # For nested resources like config.recorders
+                    main_res, sub_res = resource_path.split('.')
+                    if main_res in data and isinstance(data[main_res], dict) and sub_res in data[main_res]:
+                        count = len(data[main_res][sub_res])
+                else:
+                    if resource_path in data:
+                        if isinstance(data[resource_path], list):
+                            count = len(data[resource_path])
+                        elif isinstance(data[resource_path], dict):
+                            # For services returning a dict with multiple resource types
+                            count = sum(len(val) for val in data[resource_path].values() if isinstance(val, list))
+                
+                row[resource_name] = count
+                total_by_type[resource_name] += count
+                region_total += count
+            
+            row['Total'] = region_total
+            region_rows.append(row)
+        
+        # Add totals row
+        totals_row = {'Region': 'TOTAL'}
+        grand_total = 0
+        
+        for resource_name in total_by_type:
+            totals_row[resource_name] = total_by_type[resource_name]
+            grand_total += total_by_type[resource_name]
+        
+        totals_row['Total'] = grand_total
+        region_rows.append(totals_row)
+        
+        # Write to Excel
+        if region_rows:
+            df = pd.DataFrame(region_rows)
+            df.to_excel(writer, sheet_name='Resource Usage by Region', index=False)
+            self._format_sheet(writer.sheets['Resource Usage by Region'], df, header_format)
 
     def _write_summary(self, writer: pd.ExcelWriter, header_format: Any) -> None:
         """Write overall summary information."""
@@ -411,6 +453,15 @@ class ReportGenerator:
                 vpc_count = 0
                 s3_count = 0
                 fsx_count = 0
+                asg_count = 0
+                launch_config_count = 0
+                launch_template_count = 0
+                target_group_count = 0
+                load_balancer_count = 0
+                config_recorder_count = 0
+                config_rule_count = 0
+                config_conformance_pack_count = 0
+                config_aggregator_count = 0
                 
                 # Count resources across all regions
                 for region, services in self.results['regions'].items():
@@ -430,6 +481,23 @@ class ReportGenerator:
                         s3_count += len(services['s3'])
                     if 'fsx' in services:
                         fsx_count += len(services['fsx'])
+                    
+                    # Count autoscaling resources
+                    if 'autoscaling' in services and isinstance(services['autoscaling'], dict):
+                        autoscaling_data = services['autoscaling']
+                        asg_count += len(autoscaling_data.get('auto_scaling_groups', []))
+                        launch_config_count += len(autoscaling_data.get('launch_configurations', []))
+                        launch_template_count += len(autoscaling_data.get('launch_templates', []))
+                        target_group_count += len(autoscaling_data.get('target_groups', []))
+                        load_balancer_count += len(autoscaling_data.get('load_balancers', []))
+                    
+                    # Count Config resources
+                    if 'config' in services and isinstance(services['config'], dict):
+                        config_data = services['config']
+                        config_recorder_count += len(config_data.get('recorders', []))
+                        config_rule_count += len(config_data.get('rules', []))
+                        config_conformance_pack_count += len(config_data.get('conformance_packs', []))
+                        config_aggregator_count += len(config_data.get('aggregators', []))
                 
                 # Add counts to the resource_counts list
                 resource_counts.extend([
@@ -440,13 +508,49 @@ class ReportGenerator:
                     {'Category': 'Bedrock Models', 'Count': bedrock_count},
                     {'Category': 'VPCs', 'Count': vpc_count},
                     {'Category': 'S3 Buckets', 'Count': s3_count},
-                    {'Category': 'FSx', 'Count': fsx_count}
+                    {'Category': 'FSx File Systems', 'Count': fsx_count},
+                    {'Category': 'Auto Scaling Groups', 'Count': asg_count},
+                    {'Category': 'Launch Configurations', 'Count': launch_config_count},
+                    {'Category': 'Launch Templates', 'Count': launch_template_count},
+                    {'Category': 'Target Groups', 'Count': target_group_count},
+                    {'Category': 'Load Balancers', 'Count': load_balancer_count},
+                    {'Category': 'Config Recorders', 'Count': config_recorder_count},
+                    {'Category': 'Config Rules', 'Count': config_rule_count},
+                    {'Category': 'Config Conformance Packs', 'Count': config_conformance_pack_count},
+                    {'Category': 'Config Aggregators', 'Count': config_aggregator_count}
                 ])
             
             # Write the summary data
             if resource_counts:
-                self._write_dataframe(writer, 'Resource Summary', resource_counts, header_format)
+                self._write_dataframe(writer, 'Resource Counts', resource_counts, header_format)
                 
         except Exception as e:
             print(f"Error in _write_resource_counts: {str(e)}")
             print(traceback.format_exc())
+
+    def _format_sheet(self, worksheet, dataframe, header_format):
+        """Format Excel worksheet with headers and column widths."""
+        # Format the header row with the header format
+        for col_num, value in enumerate(dataframe.columns.values):
+            worksheet.write(0, col_num, value, header_format)
+        
+        # Set column widths based on content
+        for idx, col in enumerate(dataframe.columns):
+            # Calculate max width based on column name and values
+            max_len = len(str(col)) + 2  # Add padding
+            
+            # Check values in the column
+            for i, value in enumerate(dataframe[col]):
+                if value is not None:
+                    # Get string representation and calculate length
+                    str_value = str(value)
+                    cell_len = len(str_value)
+                    
+                    # Limit max width to avoid excessive column widths
+                    if cell_len > 50:
+                        cell_len = 50
+                    
+                    max_len = max(max_len, cell_len)
+            
+            # Set column width
+            worksheet.set_column(idx, idx, max_len)

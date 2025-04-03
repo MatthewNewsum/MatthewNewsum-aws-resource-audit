@@ -1,6 +1,7 @@
 from .amplify import AmplifyService
 from .autoscaling import AutoScalingService
 from .bedrock import BedrockService
+from .config import ConfigService
 from .dynamodb import DynamoDBService
 from .ec2 import EC2Service
 from .fsx import FSxService
@@ -18,6 +19,7 @@ __all__ = [
     'AmplifyService',
     'AutoScalingService',
     'BedrockService',
+    'ConfigService',
     'DynamoDBService',
     'EC2Service',
     'FSxService',
