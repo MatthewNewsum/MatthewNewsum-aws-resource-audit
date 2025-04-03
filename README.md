@@ -29,6 +29,7 @@ A Python tool for auditing AWS resources across multiple regions and services.
 ### Known Issues
 
 - The VPC output leaves a lot to be desired - I will try to reformat to be more readable
+- Bedrock outputs all enabled models - I will re assess
 
 ## Usage
 
@@ -53,6 +54,7 @@ python main.py [--regions REGIONS] [--services SERVICES] [--output-dir OUTPUT_DI
 - bedrock
 - dynamodb
 - ec2
+- fsx
 - glue
 - iam
 - lambda
@@ -98,6 +100,7 @@ The tool generates two report files:
 - IAM Users/Roles/Groups
 - S3 Buckets
 - EC2 Instances
+- FSx File Systems
 - RDS Instances
 - VPC Resources
 - Lambda Functions

@@ -99,7 +99,7 @@ class ReportGenerator:
             max_width = max(
                 df[column].astype(str).map(len).max(),  # Width of largest data
                 len(column)  # Width of column header
-            ) + 2  # Add a little extra space
+            ) + 2  
             worksheet.set_column(col_num, col_num, max_width)
         
         print(f"  Added {len(df)} rows to {sheet_name}")
@@ -247,6 +247,7 @@ class ReportGenerator:
             'dynamodb': 'DynamoDB Tables',
             'bedrock': 'Bedrock Models',
             's3': 'S3 Buckets',
+            'fsx': 'FSx',
             # Add other resource types as needed
         }
 
@@ -256,24 +257,66 @@ class ReportGenerator:
             
             # Collect resources of this type from all regions
             for region, services in self.results['regions'].items():
-                if resource_type in services and services[resource_type]:
-                    for resource in services[resource_type]:
-                        # Ensure 'Region' is included if not already
-                        if 'Region' not in resource and region:
-                            resource['Region'] = region
-                        all_resources.append(resource)
-            
+                if resource_type in services:
+                    if isinstance(services[resource_type], list):
+                        for resource in services[resource_type]:
+                            if isinstance(resource, dict):  # Make sure it's a dict before modifying
+                                # Ensure 'Region' is included if not already
+                                if 'Region' not in resource:
+                                    resource['Region'] = region
+                                all_resources.append(resource)
+                            else:
+                                # Handle non-dictionary resources
+                                print(f"Warning: Resource in {resource_type} is not a dictionary: {type(resource)}")
+                                # Create a simple dict with the string value
+                                if isinstance(resource, str):
+                                    all_resources.append({'Value': resource, 'Region': region})
+                    elif isinstance(services[resource_type], dict) and 'error' in services[resource_type]:
+                        # Handle error case
+                        error_msg = services[resource_type]['error']
+                        all_resources.append({'Region': region, 'Error': error_msg})
+                    
             # Write the collected resources to a sheet
             if all_resources:
                 self._write_dataframe(writer, sheet_name, all_resources, header_format)
 
     def _write_resource_usage_by_region(self, writer: pd.ExcelWriter, header_format: Any) -> None:
-        """Write resource usage summary by region."""
-        if 'regions' not in self.results:
-            return
-
-        region_usage = []
+        """Write resource usage by region matrix."""
+        print("Writing resource usage by region...")
+        
+        # Collect all resource types and regions
+        regions = []
+        resource_counts = {}
+        
         for region, services in self.results['regions'].items():
+            regions.append(region)
+            
+            # Add these lines to track autoscaling resources
+            if 'autoscaling' in services and isinstance(services['autoscaling'], dict):
+                autoscaling_data = services['autoscaling']
+                resource_counts.setdefault(region, {})
+                
+                # Count auto scaling groups
+                if 'auto_scaling_groups' in autoscaling_data:
+                    resource_counts[region]['Auto Scaling Groups'] = len(autoscaling_data['auto_scaling_groups'])
+                
+                # Count launch configurations
+                if 'launch_configurations' in autoscaling_data:
+                    resource_counts[region]['Launch Configurations'] = len(autoscaling_data['launch_configurations'])
+                
+                # Count launch templates
+                if 'launch_templates' in autoscaling_data:
+                    resource_counts[region]['Launch Templates'] = len(autoscaling_data['launch_templates'])
+                
+                # Count target groups
+                if 'target_groups' in autoscaling_data:
+                    resource_counts[region]['Target Groups'] = len(autoscaling_data['target_groups'])
+                
+                # Count load balancers
+                if 'load_balancers' in autoscaling_data:
+                    resource_counts[region]['Load Balancers'] = len(autoscaling_data['load_balancers'])
+            
+            # Rest of the existing code for other services...
             usage = {'Region': region}
             
             # Count EC2 instances
@@ -309,12 +352,16 @@ class ReportGenerator:
                         if 'Security Groups' in vpc:
                             usage['Security Groups'] = usage.get('Security Groups', 0) + vpc['Security Groups']
             
+            # Add FSx resources
+            if 'fsx' in services:
+                usage['FSx'] = len(services['fsx'])
+            
             # Add other resource types as needed
             
-            region_usage.append(usage)
+            resource_counts[region] = usage
         
-        if region_usage:
-            self._write_dataframe(writer, 'Resource Usage by Region', region_usage, header_format)
+        if resource_counts:
+            self._write_dataframe(writer, 'Resource Usage by Region', resource_counts, header_format)
 
     def _write_summary(self, writer: pd.ExcelWriter, header_format: Any) -> None:
         """Write overall summary information."""
@@ -363,6 +410,7 @@ class ReportGenerator:
                 bedrock_count = 0
                 vpc_count = 0
                 s3_count = 0
+                fsx_count = 0
                 
                 # Count resources across all regions
                 for region, services in self.results['regions'].items():
@@ -380,6 +428,8 @@ class ReportGenerator:
                         vpc_count += len(services['vpc'])
                     if 's3' in services:
                         s3_count += len(services['s3'])
+                    if 'fsx' in services:
+                        fsx_count += len(services['fsx'])
                 
                 # Add counts to the resource_counts list
                 resource_counts.extend([
@@ -389,7 +439,8 @@ class ReportGenerator:
                     {'Category': 'DynamoDB Tables', 'Count': dynamodb_count},
                     {'Category': 'Bedrock Models', 'Count': bedrock_count},
                     {'Category': 'VPCs', 'Count': vpc_count},
-                    {'Category': 'S3 Buckets', 'Count': s3_count}
+                    {'Category': 'S3 Buckets', 'Count': s3_count},
+                    {'Category': 'FSx', 'Count': fsx_count}
                 ])
             
             # Write the summary data

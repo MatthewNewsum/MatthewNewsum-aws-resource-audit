@@ -17,6 +17,7 @@ from services.iam import IAMService
 from services.s3 import S3Service
 from services.glue import GlueService
 from services.athena import AthenaService
+from services.fsx import FSxService
 
 class AWSAuditor:
     def __init__(self, session: boto3.Session, regions: List[str], services: List[str]):
@@ -137,10 +138,11 @@ class AWSAuditor:
             service_map = {
                 'amplify': AmplifyService,
                 'athena': AthenaService,
-                'autoscaling': AutoScalingService,  # Add this line
+                'autoscaling': AutoScalingService,
                 'bedrock': BedrockService,
                 'dynamodb': DynamoDBService,
                 'ec2': EC2Service,
+                'fsx': FSxService,
                 'glue': GlueService,
                 'iam': IAMService,
                 'lambda': LambdaService,

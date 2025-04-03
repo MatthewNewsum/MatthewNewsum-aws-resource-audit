@@ -121,19 +121,27 @@ class AutoScalingService(AWSService):
                 for tg in page['TargetGroups']:
                     # Get targets health
                     try:
-                        health = self.elb_client.describe_target_health(TargetGroupArn=tg['TargetGroupArn'])
-                        healthy_count = len([t for t in health['TargetHealthDescriptions'] 
-                                          if t['TargetHealth']['State'] == 'healthy'])
-                        unhealthy_count = len([t for t in health['TargetHealthDescriptions'] 
-                                            if t['TargetHealth']['State'] != 'healthy'])
-                        total_count = len(health['TargetHealthDescriptions'])
-                    except:
+                        health_response = self.elb_client.describe_target_health(TargetGroupArn=tg['TargetGroupArn'])
+                        # Check if health_response is a string before trying to access it as a dict
+                        if isinstance(health_response, dict) and 'TargetHealthDescriptions' in health_response:
+                            health_descriptions = health_response['TargetHealthDescriptions']
+                            healthy_count = len([t for t in health_descriptions 
+                                               if t.get('TargetHealth', {}).get('State') == 'healthy'])
+                            unhealthy_count = len([t for t in health_descriptions 
+                                                 if t.get('TargetHealth', {}).get('State', '') != 'healthy'])
+                            total_count = len(health_descriptions)
+                        else:
+                            healthy_count = unhealthy_count = total_count = 0
+                            print(f"Warning: Unexpected target health response format for {tg['TargetGroupArn']}")
+                    except Exception as health_error:
+                        print(f"Error getting target health: {str(health_error)}")
                         healthy_count = unhealthy_count = total_count = 0
                     
+                    # Create a dictionary with safe data access using .get() method
                     target_groups.append({
                         'Region': self.region,
-                        'Target Group Name': tg['TargetGroupName'],
-                        'ARN': tg['TargetGroupArn'],
+                        'Target Group Name': tg.get('TargetGroupName', 'N/A'),
+                        'ARN': tg.get('TargetGroupArn', 'N/A'),
                         'Protocol': tg.get('Protocol', 'N/A'),
                         'Port': tg.get('Port', 'N/A'),
                         'VPC ID': tg.get('VpcId', 'N/A'),
@@ -148,11 +156,16 @@ class AutoScalingService(AWSService):
                         'Total Targets': total_count,
                         'Healthy Targets': healthy_count,
                         'Unhealthy Targets': unhealthy_count,
-                        'Load Balancer ARNs': ', '.join([lb['LoadBalancerArn'] for lb in tg.get('LoadBalancerArns', [])])
+                        'Load Balancer ARNs': ', '.join([lb.get('LoadBalancerArn', '') 
+                                                      for lb in tg.get('LoadBalancerArns', []) 
+                                                      if isinstance(lb, dict)])
                     })
             
         except Exception as e:
             print(f"Error listing target groups: {str(e)}")
+            # Print more detailed error information for debugging
+            import traceback
+            print(traceback.format_exc())
         
         return target_groups
     

@@ -1,34 +1,38 @@
 # AWS Service configuration
 DEFAULT_SERVICES = [
+    'amplify',
     'autoscaling',
-    'route53', 
     'athena',
     'bedrock',
     'dynamodb',
     'ec2',
+    'fsx',
+    'glue',
     'iam',
     'lambda',
     'lightsail',
     'rds',
+    'route53', 
     's3',
-    'vpc',
-    'glue'
+    'vpc'
 ]
 
 AVAILABLE_SERVICES = [
-    'autoscaling',
-    'route53', 
+    'amplify',
     'athena',
+    'autoscaling',
     'bedrock',
     'dynamodb',
     'ec2',
+    'fsx',
+    'glue',
     'iam',
     'lambda',
     'lightsail',
     'rds',
+    'route53',
     's3',
-    'vpc',
-    'glue'
+    'vpc'
 ]
 
 # Threading configuration

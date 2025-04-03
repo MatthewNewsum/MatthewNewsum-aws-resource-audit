@@ -3,6 +3,7 @@ from .autoscaling import AutoScalingService
 from .bedrock import BedrockService
 from .dynamodb import DynamoDBService
 from .ec2 import EC2Service
+from .fsx import FSxService
 from .glue import GlueService
 from .iam import IAMService
 from .lambda_service import LambdaService
@@ -19,6 +20,7 @@ __all__ = [
     'BedrockService',
     'DynamoDBService',
     'EC2Service',
+    'FSxService',
     'GlueService',
     'IAMService',
     'LambdaService',
