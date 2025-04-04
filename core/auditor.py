@@ -8,7 +8,6 @@ from services.autoscaling import AutoScalingService
 from services.ec2 import EC2Service
 from services.rds import RDSService
 from services.route53 import Route53Service
-from services.vpc import VPCService
 from services.lambda_service import LambdaService
 from services.lightsail import LightsailService
 from services.dynamodb import DynamoDBService
@@ -19,6 +18,7 @@ from services.glue import GlueService
 from services.athena import AthenaService
 from services.fsx import FSxService
 from services.config import ConfigService
+from services.vpc import VPCService
 
 class AWSAuditor:
     def __init__(self, session: boto3.Session, regions: List[str], services: List[str]):

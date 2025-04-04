@@ -113,6 +113,38 @@ class ReportGenerator:
                 print("No global services data available")
                 return
             
+            # Add IAM data handling here
+            if 'iam' in self.results['global_services']:
+                print("Processing IAM data...")
+                iam_data = self.results['global_services']['iam']
+                
+                # Process IAM users
+                if iam_data.get('users'):
+                    self._write_dataframe(
+                        writer,
+                        'IAM Users',
+                        iam_data['users'],
+                        header_format
+                    )
+                
+                # Process IAM roles
+                if iam_data.get('roles'):
+                    self._write_dataframe(
+                        writer,
+                        'IAM Roles',
+                        iam_data['roles'],
+                        header_format
+                    )
+                
+                # Process IAM groups
+                if iam_data.get('groups'):
+                    self._write_dataframe(
+                        writer,
+                        'IAM Groups',
+                        iam_data['groups'],
+                        header_format
+                    )
+            
             print(f"Available global services: {self.results['global_services'].keys()}")
             
             # Handle Route53 resources
@@ -326,6 +358,44 @@ class ReportGenerator:
             df_aggregators.to_excel(writer, sheet_name='Config Aggregators', index=False)
             self._format_sheet(writer.sheets['Config Aggregators'], df_aggregators, header_format)
 
+        # Add VPC resources
+        vpc_resources = []
+        vpc_subnets = []
+        vpc_security_groups = []
+        
+        # Process VPC data from all regions
+        for region, services in self.results['regions'].items():
+            if 'vpc' in services and isinstance(services['vpc'], list):
+                for vpc in services['vpc']:
+                    # Add region if not present
+                    if isinstance(vpc, dict):
+                        vpc['Region'] = region
+                        vpc_resources.append(vpc)
+                        
+                        # Process subnets if they exist
+                        if 'subnets' in vpc and isinstance(vpc['subnets'], list):
+                            for subnet in vpc['subnets']:
+                                subnet['Region'] = region
+                                subnet['VPC ID'] = vpc.get('VPC ID', '')
+                                vpc_subnets.append(subnet)
+                        
+                        # Process security groups
+                        if 'security_groups' in vpc and isinstance(vpc['security_groups'], list):
+                            for sg in vpc['security_groups']:
+                                sg['Region'] = region
+                                sg['VPC ID'] = vpc.get('VPC ID', '')
+                                vpc_security_groups.append(sg)
+        
+        # Write VPC resources if available
+        if vpc_resources:
+            self._write_dataframe(writer, 'VPCs', vpc_resources, header_format)
+        
+        if vpc_subnets:
+            self._write_dataframe(writer, 'VPC Subnets', vpc_subnets, header_format)
+        
+        if vpc_security_groups:
+            self._write_dataframe(writer, 'Security Groups', vpc_security_groups, header_format)
+
     def _write_resource_usage_by_region(self, writer, header_format):
         """Write resource usage by region."""
         print("Writing resource usage by region...")
@@ -334,8 +404,7 @@ class ReportGenerator:
         region_rows = []
         # Initialize total_by_type dictionary here
         total_by_type = {}
-        
-        # Update the resource_type list to include Config resources
+    
         resource_types = [
             ('EC2 Instances', 'ec2'),
             ('RDS Instances', 'rds'),
@@ -354,7 +423,10 @@ class ReportGenerator:
             ('Config Aggregators', 'config.aggregators'),
             ('Athena Workgroups', 'athena.workgroups'),
             ('Bedrock Models', 'bedrock'),
-            ('FSx File Systems', 'fsx')
+            ('FSx File Systems', 'fsx'),
+            ('IAM Users', 'global_services.iam.users'),
+            ('IAM Roles', 'global_services.iam.roles'),
+            ('IAM Groups', 'global_services.iam.groups')
         ]
         
         # Initialize the total_by_type counters for all resource types
@@ -370,9 +442,12 @@ class ReportGenerator:
                 count = 0
                 
                 if '.' in resource_path:  # For nested resources like config.recorders
-                    main_res, sub_res = resource_path.split('.')
-                    if main_res in data and isinstance(data[main_res], dict) and sub_res in data[main_res]:
-                        count = len(data[main_res][sub_res])
+                    path_parts = resource_path.split('.')
+                    if len(path_parts) == 2:  # Regular nested resource
+                        main_res, sub_res = path_parts
+                        if main_res in data and isinstance(data[main_res], dict) and sub_res in data[main_res]:
+                            count = len(data[main_res][sub_res])
+                    # Skip global resources when processing regular regions
                 else:
                     if resource_path in data:
                         if isinstance(data[resource_path], list):
@@ -384,6 +459,28 @@ class ReportGenerator:
                 row[resource_name] = count
                 total_by_type[resource_name] += count
                 region_total += count
+            
+            row['Total'] = region_total
+            region_rows.append(row)
+        
+        # Handle global services
+        if 'global_services' in self.results:
+            row = {'Region': 'global'}
+            region_total = 0
+            
+            for resource_name, resource_path in resource_types:
+                count = 0
+                if resource_path.startswith('global_services'):
+                    path_parts = resource_path.split('.')
+                    if len(path_parts) == 3:  # global_services.service.resource format
+                        _, service, resource = path_parts  # Use _ for the first part since we know it's "global_services"
+                        if (service in self.results['global_services'] and 
+                                resource in self.results['global_services'][service]):
+                            count = len(self.results['global_services'][service][resource])
+                    
+                    row[resource_name] = count
+                    total_by_type[resource_name] = total_by_type.get(resource_name, 0) + count
+                    region_total += count
             
             row['Total'] = region_total
             region_rows.append(row)
@@ -416,6 +513,26 @@ class ReportGenerator:
         try:
             # Handle global services
             if 'global_services' in self.results:
+                # Add IAM resources
+                if 'iam' in self.results['global_services']:
+                    iam_data = self.results['global_services']['iam']
+                    
+                    # Get counts for IAM resources
+                    users = iam_data.get('users', [])
+                    roles = iam_data.get('roles', [])
+                    groups = iam_data.get('groups', [])
+                    
+                    # Make sure these are lists before counting
+                    if not isinstance(users, list): users = []
+                    if not isinstance(roles, list): roles = []
+                    if not isinstance(groups, list): groups = []
+                    
+                    resource_counts.extend([
+                        {'Category': 'IAM Users', 'Count': len(users)},
+                        {'Category': 'IAM Roles', 'Count': len(roles)},
+                        {'Category': 'IAM Groups', 'Count': len(groups)}
+                    ])
+                
                 # Route53 resources
                 if 'route53' in self.results['global_services']:
                     route53_data = self.results['global_services']['route53']
