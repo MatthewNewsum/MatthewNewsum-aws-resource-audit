@@ -59,7 +59,8 @@ class AWSAuditor:
                     global_results['route53'] = {
                         'hosted_zones': [],
                         'health_checks': [],
-                        'traffic_policies': []
+                        'traffic_policies': [],
+                        'zone_records': []  # Add this line
                     }
             except Exception as e:
                 print(f"Error in Route53 audit: {str(e)}")  # Debug
@@ -67,7 +68,8 @@ class AWSAuditor:
                 global_results['route53'] = {
                     'hosted_zones': [],
                     'health_checks': [],
-                    'traffic_policies': []
+                    'traffic_policies': [],
+                    'zone_records': []  # Add this line
                 }
 
         if 'iam' in self.services:

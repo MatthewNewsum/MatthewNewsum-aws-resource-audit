@@ -49,6 +49,6 @@
 
 @workspace provide clear, concise, step by step instructions with references please to resolve this error.
 
-@workspace can we add aws config to the list of audited services and reports.  i need filenames to create or modify. clear, concise, step by step instruction.  Please omit nothing and update readme.md at the end
+@workspace can we add aws config to the list of audited services and reports without modifying any functionality.  i need filenames to create or modify. clear, concise, step by step instruction.  Please omit nothing and update readme.md at the end
 
 i need the tab called Resource Usage by Region in the excel sheet updated to include xxx.

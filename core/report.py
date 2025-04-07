@@ -202,6 +202,24 @@ class ReportGenerator:
                         )
                     else:
                         print("No traffic policies to write")
+                
+                # Process zone records - ensure it's a list
+                if route53_data.get('zone_records'):
+                    zone_records = route53_data['zone_records']
+                    if isinstance(zone_records, str):
+                        print(f"WARNING: zone_records is a string: '{zone_records}', converting to empty list")
+                        zone_records = []
+                    
+                    if zone_records:  # Only write if there are items
+                        print(f"Writing {len(zone_records)} zone records")
+                        self._write_dataframe(
+                            writer,
+                            'Route53 Zone Records',
+                            zone_records,
+                            header_format
+                        )
+                    else:
+                        print("No zone records to write")
                         
             # Handle other global services here (IAM, etc.)
             
@@ -541,22 +559,20 @@ class ReportGenerator:
                         hosted_zones = route53_data.get('hosted_zones', [])
                         health_checks = route53_data.get('health_checks', [])
                         traffic_policies = route53_data.get('traffic_policies', [])
-                        
-                        # Ensure these are actually lists before getting their length
-                        if not isinstance(hosted_zones, list):
-                            print(f"WARNING: hosted_zones is not a list: {type(hosted_zones)}")
-                            hosted_zones = []
-                        if not isinstance(health_checks, list):
-                            print(f"WARNING: health_checks is not a list: {type(health_checks)}")
-                            health_checks = []
                         if not isinstance(traffic_policies, list):
                             print(f"WARNING: traffic_policies is not a list: {type(traffic_policies)}")
                             traffic_policies = []
                         
+                        zone_records = route53_data.get('zone_records', [])
+                        if not isinstance(zone_records, list):
+                            print(f"WARNING: zone_records is not a list: {type(zone_records)}")
+                            zone_records = []
+                        
                         resource_counts.extend([
                             {'Category': 'Route53 Hosted Zones', 'Count': len(hosted_zones)},
                             {'Category': 'Route53 Health Checks', 'Count': len(health_checks)},
-                            {'Category': 'Route53 Traffic Policies', 'Count': len(traffic_policies)}
+                            {'Category': 'Route53 Traffic Policies', 'Count': len(traffic_policies)},
+                            {'Category': 'Route53 Zone Records', 'Count': len(zone_records)}
                         ])
             
             # Regional resources

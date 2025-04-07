@@ -23,10 +23,14 @@ class Route53Service(AWSService):
             traffic_policies = self._audit_traffic_policies()
             print(f"Found {len(traffic_policies)} traffic policies")  # Debug
             
+            zone_records = self._audit_zone_records()  # New method call
+            print(f"Found {len(zone_records)} zone records")  # Debug
+            
             results = {
                 'hosted_zones': hosted_zones,
                 'health_checks': health_checks,
-                'traffic_policies': traffic_policies
+                'traffic_policies': traffic_policies,
+                'zone_records': zone_records  # Add to results
             }
             print(f"Route53 full results: {results}")  # Debug
             return results
@@ -35,7 +39,8 @@ class Route53Service(AWSService):
             return {
                 'hosted_zones': [],
                 'health_checks': [],
-                'traffic_policies': []
+                'traffic_policies': [],
+                'zone_records': []  # Add empty list for zone records
             }
 
     def _audit_hosted_zones(self) -> List[Dict[str, Any]]:
@@ -112,3 +117,42 @@ class Route53Service(AWSService):
         except Exception as e:
             print(f"Error listing traffic policies: {str(e)}")
         return policies
+
+    # New method to audit zone records
+    def _audit_zone_records(self) -> List[Dict[str, Any]]:
+        all_records = []
+        try:
+            # First get all hosted zones
+            paginator = self.client.get_paginator('list_hosted_zones')
+            for page in paginator.paginate():
+                for zone in page['HostedZones']:
+                    zone_id = zone['Id']
+                    zone_name = zone['Name']
+                    private_zone = zone['Config']['PrivateZone']
+                    
+                    # Then get all records for each zone
+                    record_paginator = self.client.get_paginator('list_resource_record_sets')
+                    for record_page in record_paginator.paginate(HostedZoneId=zone_id):
+                        for record in record_page['ResourceRecordSets']:
+                            record_data = {
+                                'Zone ID': zone_id.split('/')[-1],
+                                'Zone Name': zone_name,
+                                'Private Zone': private_zone,
+                                'Record Name': record['Name'],
+                                'Record Type': record['Type'],
+                                'TTL': record.get('TTL', 'N/A')
+                            }
+                            
+                            # Handle different record types
+                            if 'ResourceRecords' in record:
+                                values = [r.get('Value', 'N/A') for r in record['ResourceRecords']]
+                                record_data['Record Values'] = ', '.join(values)
+                            elif 'AliasTarget' in record:
+                                record_data['Record Values'] = f"Alias: {record['AliasTarget'].get('DNSName', 'N/A')}"
+                            else:
+                                record_data['Record Values'] = 'N/A'
+                                
+                            all_records.append(record_data)
+        except Exception as e:
+            print(f"Error listing zone records: {str(e)}")
+        return all_records
