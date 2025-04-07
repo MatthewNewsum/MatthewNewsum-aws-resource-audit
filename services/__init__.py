@@ -14,7 +14,7 @@ from .route53 import Route53Service
 from .s3 import S3Service
 from .vpc import VPCService
 
-# This is a list of all the services that we have implemented so far.
+# This is a list of all the services that I have implemented so far.
 __all__ = [
     'AmplifyService',
     'AutoScalingService',

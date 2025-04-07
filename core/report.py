@@ -298,6 +298,7 @@ class ReportGenerator:
             'bedrock': 'Bedrock Models',
             's3': 'S3 Buckets',
             'fsx': 'FSx',
+            'sns': 'SNS Topics',
             # Add other resource types as needed
         }
 
@@ -444,7 +445,8 @@ class ReportGenerator:
             ('FSx File Systems', 'fsx'),
             ('IAM Users', 'global_services.iam.users'),
             ('IAM Roles', 'global_services.iam.roles'),
-            ('IAM Groups', 'global_services.iam.groups')
+            ('IAM Groups', 'global_services.iam.groups'),
+            ('SNS Topics', 'sns')
         ]
         
         # Initialize the total_by_type counters for all resource types
@@ -595,6 +597,7 @@ class ReportGenerator:
                 config_rule_count = 0
                 config_conformance_pack_count = 0
                 config_aggregator_count = 0
+                sns_count = 0
                 
                 # Count resources across all regions
                 for region, services in self.results['regions'].items():
@@ -631,6 +634,9 @@ class ReportGenerator:
                         config_rule_count += len(config_data.get('rules', []))
                         config_conformance_pack_count += len(config_data.get('conformance_packs', []))
                         config_aggregator_count += len(config_data.get('aggregators', []))
+                    
+                    if 'sns' in services:
+                        sns_count += len(services['sns'])
                 
                 # Add counts to the resource_counts list
                 resource_counts.extend([
@@ -650,7 +656,8 @@ class ReportGenerator:
                     {'Category': 'Config Recorders', 'Count': config_recorder_count},
                     {'Category': 'Config Rules', 'Count': config_rule_count},
                     {'Category': 'Config Conformance Packs', 'Count': config_conformance_pack_count},
-                    {'Category': 'Config Aggregators', 'Count': config_aggregator_count}
+                    {'Category': 'Config Aggregators', 'Count': config_aggregator_count},
+                    {'Category': 'SNS Topics', 'Count': sns_count}
                 ])
             
             # Write the summary data
@@ -687,3 +694,29 @@ class ReportGenerator:
             
             # Set column width
             worksheet.set_column(idx, idx, max_len)
+
+class Report:
+    def __init__(self):
+        self.resource_types = {
+            'ec2': 'EC2 Instances',
+            'rds': 'RDS Instances',
+            'lambda': 'Lambda Functions',
+            'dynamodb': 'DynamoDB Tables',
+            'bedrock': 'Bedrock Models',
+            's3': 'S3 Buckets',
+            'fsx': 'FSx',
+            'SNS Topic': 'SNS'
+        }
+        
+    def create_resource_usage_sheet(self, workbook, data):
+        services = [
+            'ec2',
+            'rds',
+            'lambda',
+            'dynamodb',
+            'bedrock',
+            's3',
+            'fsx',
+            'SNS'
+        ]
+

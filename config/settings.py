@@ -15,7 +15,9 @@ DEFAULT_SERVICES = [
     'rds',
     'route53', 
     's3',
+    'sns',
     'vpc'
+
 ]
 
 AVAILABLE_SERVICES = [
@@ -34,7 +36,9 @@ AVAILABLE_SERVICES = [
     'rds',
     'route53',
     's3',
+    'sns',
     'vpc'
+
 ]
 
 # Threading configuration

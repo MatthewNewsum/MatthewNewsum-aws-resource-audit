@@ -10,6 +10,7 @@
 - Lightsail
 - RDS
 - S3
+- SNS
 - VPC
 
 ###  Services to Add   ###
@@ -43,7 +44,8 @@
 
 ###   Instructions   ###
 
-@workspace I need to add XXX as an audited service to the app. Provide clear, concise, step by step instructions to modify the existing app taking care to omit NOTHING and NOT to change or remove any existing functionality. Be sure to add the additional fields to the summary excel tabs where applicable. Namely Resource Usage by Region, Resource Counts, Region Summary and Region Details.
+@workspace I need to add XXX as an audited service to the app. Provide clear, concise, step by step instructions to modify the existing app taking care to omit NOTHING and NOT to change or remove any existing functionality. Be sure to add the additional fields to the summary excel tabs where applicable. Namely Resource Usage by Region, Resource Counts, Region Summary and Region Details as well as updating the readme.md
+
 
 
 

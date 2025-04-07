@@ -19,6 +19,7 @@ from services.athena import AthenaService
 from services.fsx import FSxService
 from services.config import ConfigService
 from services.vpc import VPCService
+from services.sns import SNSService
 
 class AWSAuditor:
     def __init__(self, session: boto3.Session, regions: List[str], services: List[str]):
@@ -160,6 +161,7 @@ class AWSAuditor:
                 'rds': RDSService,
                 'route53': Route53Service,
                 's3': S3Service,
+                'sns': SNSService,
                 'vpc': VPCService
             }
             for service in self.services:

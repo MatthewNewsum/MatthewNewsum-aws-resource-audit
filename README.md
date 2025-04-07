@@ -64,6 +64,27 @@ python main.py [--regions REGIONS] [--services SERVICES] [--output-dir OUTPUT_DI
 - s3
 - vpc
 
+## Supported AWS Services
+
+- amplify
+- athena
+- autoscaling
+- bedrock
+- config
+- dynamodb
+- ec2
+- fsx
+- glue
+- iam
+- lambda
+- rds
+- route53
+- s3
+- vpc
+- SNS (Simple Notification Service)
+  - Topics
+  - Subscriptions
+
 ## Examples
 
 Audit all services in all regions:
@@ -110,6 +131,10 @@ The tool generates two report files:
 - Bedrock Models
 - Auto Scaling Groups
 - Load Balancers
+- Route53 Hosted Zones
+- Route53 Health Checks
+- Route53 Traffic Policies
+- Route53 Zone Records
 - Target Groups
 - Resource Usage by Region
 - Resource Counts
