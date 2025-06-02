@@ -299,6 +299,7 @@ class ReportGenerator:
             's3': 'S3 Buckets',
             'fsx': 'FSx',
             'sns': 'SNS Topics',
+            'dms': 'DMS Resources',
             # Add other resource types as needed
         }
 
@@ -415,6 +416,54 @@ class ReportGenerator:
         if vpc_security_groups:
             self._write_dataframe(writer, 'Security Groups', vpc_security_groups, header_format)
 
+        # Add DMS resources
+        dms_replication_instances = []
+        dms_replication_tasks = []
+        dms_endpoints = []
+        dms_subnet_groups = []
+        
+        # Process DMS data from all regions
+        for region, services in self.results['regions'].items():
+            if 'dms' in services and isinstance(services['dms'], dict):
+                dms_data = services['dms']
+                
+                # Process replication instances
+                if 'replication_instances' in dms_data:
+                    for instance in dms_data['replication_instances']:
+                        instance['Region'] = region
+                        dms_replication_instances.append(instance)
+                
+                # Process replication tasks
+                if 'replication_tasks' in dms_data:
+                    for task in dms_data['replication_tasks']:
+                        task['Region'] = region
+                        dms_replication_tasks.append(task)
+                
+                # Process endpoints
+                if 'endpoints' in dms_data:
+                    for endpoint in dms_data['endpoints']:
+                        endpoint['Region'] = region
+                        dms_endpoints.append(endpoint)
+                
+                # Process subnet groups
+                if 'replication_subnet_groups' in dms_data:
+                    for subnet_group in dms_data['replication_subnet_groups']:
+                        subnet_group['Region'] = region
+                        dms_subnet_groups.append(subnet_group)
+        
+        # Write DMS resources if available
+        if dms_replication_instances:
+            self._write_dataframe(writer, 'DMS Replication Instances', dms_replication_instances, header_format)
+        
+        if dms_replication_tasks:
+            self._write_dataframe(writer, 'DMS Replication Tasks', dms_replication_tasks, header_format)
+        
+        if dms_endpoints:
+            self._write_dataframe(writer, 'DMS Endpoints', dms_endpoints, header_format)
+        
+        if dms_subnet_groups:
+            self._write_dataframe(writer, 'DMS Subnet Groups', dms_subnet_groups, header_format)
+
     def _write_resource_usage_by_region(self, writer, header_format):
         """Write resource usage by region."""
         print("Writing resource usage by region...")
@@ -446,7 +495,8 @@ class ReportGenerator:
             ('IAM Users', 'global_services.iam.users'),
             ('IAM Roles', 'global_services.iam.roles'),
             ('IAM Groups', 'global_services.iam.groups'),
-            ('SNS Topics', 'sns')
+            ('SNS Topics', 'sns'),
+            ('SNS Subscriptions', 'sns.subscriptions')
         ]
         
         # Initialize the total_by_type counters for all resource types
@@ -598,6 +648,12 @@ class ReportGenerator:
                 config_conformance_pack_count = 0
                 config_aggregator_count = 0
                 sns_count = 0
+                sns_topic_count = 0
+                sns_subscription_count = 0
+                dms_replication_instances_count = 0
+                dms_replication_tasks_count = 0
+                dms_endpoints_count = 0
+                dms_subnet_groups_count = 0
                 
                 # Count resources across all regions
                 for region, services in self.results['regions'].items():
@@ -637,6 +693,17 @@ class ReportGenerator:
                     
                     if 'sns' in services:
                         sns_count += len(services['sns'])
+                        for topic in services['sns']:
+                            sns_topic_count += 1
+                            sns_subscription_count += topic.get('Subscription Count', 0)
+                    
+                    # Count DMS resources
+                    if 'dms' in services and isinstance(services['dms'], dict):
+                        dms_data = services['dms']
+                        dms_replication_instances_count += len(dms_data.get('replication_instances', []))
+                        dms_replication_tasks_count += len(dms_data.get('replication_tasks', []))
+                        dms_endpoints_count += len(dms_data.get('endpoints', []))
+                        dms_subnet_groups_count += len(dms_data.get('replication_subnet_groups', []))
                 
                 # Add counts to the resource_counts list
                 resource_counts.extend([
@@ -657,7 +724,8 @@ class ReportGenerator:
                     {'Category': 'Config Rules', 'Count': config_rule_count},
                     {'Category': 'Config Conformance Packs', 'Count': config_conformance_pack_count},
                     {'Category': 'Config Aggregators', 'Count': config_aggregator_count},
-                    {'Category': 'SNS Topics', 'Count': sns_count}
+                    {'Category': 'SNS Topics', 'Count': sns_topic_count},
+                    {'Category': 'SNS Subscriptions', 'Count': sns_subscription_count}
                 ])
             
             # Write the summary data

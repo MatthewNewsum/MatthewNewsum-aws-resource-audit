@@ -54,3 +54,11 @@
 @workspace can we add aws config to the list of audited services and reports without modifying any functionality.  i need filenames to create or modify. clear, concise, step by step instruction.  Please omit nothing and update readme.md at the end
 
 i need the tab called Resource Usage by Region in the excel sheet updated to include xxx.
+
+
+
+
+
+
+
+@workspace I need to add XXX as an audited service to the app. Provide clear, concise, step by step instructions to modify the existing app taking care to omit NOTHING and NOT to change or remove any existing functionality. Explain EXACTLY in an unambiguous fashion where to add /remove or insert items such as filename and line number or where in relation to other sections items get changed Be sure to add the additional fields to the summary excel tabs where applicable. Namely Resource Usage by Region, Resource Counts, Region Summary and Region Details as well as updating the readme.md

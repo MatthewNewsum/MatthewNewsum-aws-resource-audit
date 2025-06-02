@@ -5,6 +5,7 @@ from threading import Lock
 from services.base import AWSService
 from services.amplify import AmplifyService
 from services.autoscaling import AutoScalingService
+from services.dms import DMSService
 from services.ec2 import EC2Service
 from services.rds import RDSService
 from services.route53 import Route53Service
@@ -151,6 +152,7 @@ class AWSAuditor:
                 'autoscaling': AutoScalingService,
                 'bedrock': BedrockService,
                 'config': ConfigService,
+                'dms': DMSService,
                 'dynamodb': DynamoDBService,
                 'ec2': EC2Service,
                 'fsx': FSxService,

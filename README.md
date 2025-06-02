@@ -63,6 +63,7 @@ python main.py [--regions REGIONS] [--services SERVICES] [--output-dir OUTPUT_DI
 - route53
 - s3
 - vpc
+- dms
 
 ## Supported AWS Services
 
@@ -143,6 +144,23 @@ The tool generates two report files:
 - Config Rules
 - Config Conformance Packs
 - Config Aggregators
+- SNS Details
+  - Topic ARN
+  - Topic Name
+  - Region
+  - Subscription Count
+  - Subscription Details (Protocol, Endpoint)
+- DMS Replication Instances
+- DMS Replication Tasks  
+- DMS Endpoints
+- DMS Subnet Groups
+- DMS (Database Migration Service)
+  - Replication Instance Identifier
+  - Replication Instance Class
+  - Status
+  - Migration Type
+  - Source and Target Endpoints
+  - Creation Date
 
 ## Error Handling
 
