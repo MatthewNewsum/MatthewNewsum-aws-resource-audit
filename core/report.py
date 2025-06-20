@@ -300,6 +300,7 @@ class ReportGenerator:
             'fsx': 'FSx',
             'sns': 'SNS Topics',
             'dms': 'DMS Resources',
+            'kinesis': 'Kinesis Resources',
             # Add other resource types as needed
         }
 
@@ -480,6 +481,7 @@ class ReportGenerator:
             ('Lambda Functions', 'lambda'),
             ('DynamoDB Tables', 'dynamodb'),
             ('VPCs', 'vpc'),
+            ('Kinesis Resources', 'kinesis'),
             ('Auto Scaling Groups', 'autoscaling.auto_scaling_groups'),
             ('Launch Configurations', 'autoscaling.launch_configurations'),
             ('Launch Templates', 'autoscaling.launch_templates'),
@@ -638,6 +640,7 @@ class ReportGenerator:
                 vpc_count = 0
                 s3_count = 0
                 fsx_count = 0
+                kinesis_count = 0
                 asg_count = 0
                 launch_config_count = 0
                 launch_template_count = 0
@@ -647,13 +650,8 @@ class ReportGenerator:
                 config_rule_count = 0
                 config_conformance_pack_count = 0
                 config_aggregator_count = 0
-                sns_count = 0
                 sns_topic_count = 0
                 sns_subscription_count = 0
-                dms_replication_instances_count = 0
-                dms_replication_tasks_count = 0
-                dms_endpoints_count = 0
-                dms_subnet_groups_count = 0
                 
                 # Count resources across all regions
                 for region, services in self.results['regions'].items():
@@ -673,6 +671,8 @@ class ReportGenerator:
                         s3_count += len(services['s3'])
                     if 'fsx' in services:
                         fsx_count += len(services['fsx'])
+                    if 'kinesis' in services:
+                        kinesis_count += len(services['kinesis'])
                     
                     # Count autoscaling resources
                     if 'autoscaling' in services and isinstance(services['autoscaling'], dict):
@@ -683,7 +683,7 @@ class ReportGenerator:
                         target_group_count += len(autoscaling_data.get('target_groups', []))
                         load_balancer_count += len(autoscaling_data.get('load_balancers', []))
                     
-                    # Count Config resources
+                    # Count config resources
                     if 'config' in services and isinstance(services['config'], dict):
                         config_data = services['config']
                         config_recorder_count += len(config_data.get('recorders', []))
@@ -691,19 +691,14 @@ class ReportGenerator:
                         config_conformance_pack_count += len(config_data.get('conformance_packs', []))
                         config_aggregator_count += len(config_data.get('aggregators', []))
                     
+                    # Count SNS resources
                     if 'sns' in services:
-                        sns_count += len(services['sns'])
-                        for topic in services['sns']:
-                            sns_topic_count += 1
-                            sns_subscription_count += topic.get('Subscription Count', 0)
-                    
-                    # Count DMS resources
-                    if 'dms' in services and isinstance(services['dms'], dict):
-                        dms_data = services['dms']
-                        dms_replication_instances_count += len(dms_data.get('replication_instances', []))
-                        dms_replication_tasks_count += len(dms_data.get('replication_tasks', []))
-                        dms_endpoints_count += len(dms_data.get('endpoints', []))
-                        dms_subnet_groups_count += len(dms_data.get('replication_subnet_groups', []))
+                        sns_topics = services['sns']
+                        sns_topic_count += len(sns_topics)
+                        # Count subscriptions across all topics
+                        for topic in sns_topics:
+                            if isinstance(topic, dict) and 'Subscriptions' in topic:
+                                sns_subscription_count += len(topic['Subscriptions'])
                 
                 # Add counts to the resource_counts list
                 resource_counts.extend([
@@ -725,7 +720,8 @@ class ReportGenerator:
                     {'Category': 'Config Conformance Packs', 'Count': config_conformance_pack_count},
                     {'Category': 'Config Aggregators', 'Count': config_aggregator_count},
                     {'Category': 'SNS Topics', 'Count': sns_topic_count},
-                    {'Category': 'SNS Subscriptions', 'Count': sns_subscription_count}
+                    {'Category': 'SNS Subscriptions', 'Count': sns_subscription_count},
+                    {'Category': 'Kinesis Resources', 'Count': kinesis_count},
                 ])
             
             # Write the summary data
@@ -787,4 +783,7 @@ class Report:
             'fsx',
             'SNS'
         ]
+    
+    def create_resource_usage_by_region_sheet(self, workbook, df):
+        services = ['Amplify', 'AutoScaling', 'Bedrock', 'DynamoDB', 'EC2', 'IAM', 'Kinesis', 'Lambda', 'Lightsail', 'RDS', 'S3', 'SNS', 'VPC']
 

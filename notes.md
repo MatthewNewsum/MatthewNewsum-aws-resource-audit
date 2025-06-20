@@ -6,6 +6,7 @@
 - DynamoDB
 - EC2
 - IAM
+- Kinesis
 - Lambda
 - Lightsail
 - RDS

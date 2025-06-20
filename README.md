@@ -46,6 +46,28 @@ python main.py [--regions REGIONS] [--services SERVICES] [--output-dir OUTPUT_DI
 - `--output-dir`: Directory for output files (default: "results")
 - `--profile`: AWS profile name to use (default: "default")
 
+### Supported AWS Services
+
+- amplify
+- athena
+- autoscaling
+- bedrock
+- config
+- dynamodb
+- ec2
+- fsx
+- glue
+- iam
+- kinesis
+- lambda
+- rds
+- route53
+- s3
+- vpc
+- SNS (Simple Notification Service)
+  - Topics
+  - Subscriptions
+
 ### Available Services
 
 - amplify
@@ -58,33 +80,13 @@ python main.py [--regions REGIONS] [--services SERVICES] [--output-dir OUTPUT_DI
 - fsx
 - glue
 - iam
+- kinesis
 - lambda
 - rds
 - route53
 - s3
 - vpc
 - dms
-
-## Supported AWS Services
-
-- amplify
-- athena
-- autoscaling
-- bedrock
-- config
-- dynamodb
-- ec2
-- fsx
-- glue
-- iam
-- lambda
-- rds
-- route53
-- s3
-- vpc
-- SNS (Simple Notification Service)
-  - Topics
-  - Subscriptions
 
 ## Examples
 
@@ -119,48 +121,11 @@ The tool generates two report files:
 - Regional resource usage matrix
 
 ## Excel Report Worksheets
-
-- IAM Users/Roles/Groups
-- S3 Buckets
-- EC2 Instances
-- FSx File Systems
-- RDS Instances
-- VPC Resources
-- Lambda Functions
-- Lightsail
-- DynamoDB Tables
-- Bedrock Models
-- Auto Scaling Groups
-- Load Balancers
-- Route53 Hosted Zones
-- Route53 Health Checks
-- Route53 Traffic Policies
-- Route53 Zone Records
-- Target Groups
-- Resource Usage by Region
-- Resource Counts
-- Region Summary
-- Config Recorders
-- Config Rules
-- Config Conformance Packs
-- Config Aggregators
-- SNS Details
-  - Topic ARN
-  - Topic Name
-  - Region
-  - Subscription Count
-  - Subscription Details (Protocol, Endpoint)
-- DMS Replication Instances
-- DMS Replication Tasks  
-- DMS Endpoints
-- DMS Subnet Groups
-- DMS (Database Migration Service)
-  - Replication Instance Identifier
-  - Replication Instance Class
-  - Status
-  - Migration Type
-  - Source and Target Endpoints
-  - Creation Date
+- **Resource Usage by Region**: Shows resource counts by service (Amplify, AutoScaling, Bedrock, DynamoDB, EC2, IAM, Kinesis, Lambda, Lightsail, RDS, S3, SNS, VPC) across all regions
+- **Resource Counts**: Summary of total resources by service type
+- **Region Summary**: High-level overview of resources per region  
+- **Region Details**: Detailed breakdown of all resources by region
+- **[Service Name]**: Individual worksheets for each audited service showing detailed resource information
 
 ## Error Handling
 

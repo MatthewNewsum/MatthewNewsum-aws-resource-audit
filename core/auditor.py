@@ -9,11 +9,12 @@ from services.dms import DMSService
 from services.ec2 import EC2Service
 from services.rds import RDSService
 from services.route53 import Route53Service
+from services.iam import IAMService
+from services.kinesis import KinesisService
 from services.lambda_service import LambdaService
 from services.lightsail import LightsailService
 from services.dynamodb import DynamoDBService
 from services.bedrock import BedrockService
-from services.iam import IAMService
 from services.s3 import S3Service
 from services.glue import GlueService
 from services.athena import AthenaService
@@ -158,6 +159,7 @@ class AWSAuditor:
                 'fsx': FSxService,
                 'glue': GlueService,
                 'iam': IAMService,
+                'kinesis': KinesisService,
                 'lambda': LambdaService,
                 'lightsail': LightsailService,
                 'rds': RDSService,

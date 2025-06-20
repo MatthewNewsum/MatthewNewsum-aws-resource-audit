@@ -8,6 +8,7 @@ from .ec2 import EC2Service
 from .fsx import FSxService
 from .glue import GlueService
 from .iam import IAMService
+from .kinesis import KinesisService
 from .lambda_service import LambdaService
 from .lightsail import LightsailService
 from .rds import RDSService
@@ -27,6 +28,7 @@ __all__ = [
     'FSxService',
     'GlueService',
     'IAMService',
+    'KinesisService',
     'LambdaService',
     'LightsailService',
     'RDSService',
